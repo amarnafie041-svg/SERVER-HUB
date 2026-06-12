@@ -80,7 +80,7 @@ export function Layout({ children, path, navigate }: LayoutProps) {
           {!collapsed && (
             <div className="flex flex-col overflow-hidden">
               <span className="text-white font-bold tracking-[0.2em] text-xs" style={{ fontFamily: "'JetBrains Mono', monospace" }}>SERVER HUB</span>
-              <span className="text-[9px] text-zinc-500 tracking-wider">v5</span>
+              <span className="text-[9px] text-zinc-500 tracking-wider">v6</span>
             </div>
           )}
         </div>
@@ -159,7 +159,7 @@ export function Layout({ children, path, navigate }: LayoutProps) {
               </div>
               <div className="flex flex-col">
                 <span className="font-bold text-white text-xs tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace" }}>SERVER HUB</span>
-                <span className="text-[8px] text-zinc-600 tracking-wider">v5</span>
+                <span className="text-[8px] text-zinc-600 tracking-wider">v6</span>
               </div>
             </div>
             <div className="flex items-center gap-1">

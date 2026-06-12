@@ -67,7 +67,7 @@ const VIRTUAL_KEYS = [
 const MOBILE_BANNER = [
   "${grn}╔═══════════════════════════╗${rst}",
   "${grn}║${rst}  ${bold}${ylw}ELMODMEN  SERVER  HUB${rst}  ${grn}║${rst}",
-  "${grn}║${rst}  ${bold}${ylw}v5 — Terminal Ready${rst}    ${grn}║${rst}",
+  "${grn}║${rst}  ${bold}${ylw}v6 — Terminal Ready${rst}    ${grn}║${rst}",
   "${grn}║${rst}  ${dim}${g(245)}Type your commands below${rst} ${grn}║${rst}",
   "${grn}╚═══════════════════════════╝${rst}",
   "",
@@ -91,7 +91,7 @@ const ELMODMEN_BANNER = [
   "${grn}║${rst}              ${bold}${g(250)}██║  ██║╚██████╔╝██████╔╝███████╗██║  ██║██║  ██║${rst}              ${grn}║${rst}",
   "${grn}║${rst}              ${bold}${g(250)}╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝${rst}              ${grn}║${rst}",
   "${grn}║${rst}                                                                                    ${grn}║${rst}",
-  "${grn}║${rst}    ${dim}${g(245)}SERVER HUB v5 — Professional Command Terminal with Fixed Prompt${rst}    ${grn}║${rst}",
+  "${grn}║${rst}    ${dim}${g(245)}SERVER HUB v6 — Isolated Sandbox Terminal${rst}    ${grn}║${rst}",
   "${grn}║${rst}    ${dim}${g(245)}Type your commands below after the prompt sign ${rst}${ylw}$${rst}${dim}${g(245)}                          ${rst}    ${grn}║${rst}",
   "${grn}╚══════════════════════════════════════════════════════════════╝${rst}",
   "",

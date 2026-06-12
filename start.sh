@@ -2,7 +2,7 @@
 set -e
 
 echo "=========================================="
-echo "  Server Hub v5 - Starting Services"
+echo "  Server Hub v6 - Starting Services"
 echo "=========================================="
 
 export PATH="/opt/venv/bin:$PATH"
