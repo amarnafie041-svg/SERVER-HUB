@@ -44,15 +44,13 @@ jobs:
       - name: Upload error log to public paste
         if: failure()
         run: |
-          echo "::group::Gradle Build Errors (last 50 lines)"
-          tail -50 /tmp/gradle.log
+          echo "::group::Full Gradle Log"
+          cat /tmp/gradle.log
           echo "::endgroup::"
-          # Output each error line as an annotation
-          grep -i -E "^(> |FAILURE:|FAILED:|BUILD FAILED|Error:|error:|Exception)" /tmp/gradle.log | while IFS= read -r line; do
-            echo "::error::Gradle: $line"
+          # Output error annotations
+          grep -i -E "(error|FAILED|FAILURE|Exception|Build failed|Cannot|not found|missing)" /tmp/gradle.log | head -20 | while IFS= read -r line; do
+            echo "::error file=gradle.log::$(echo "$line" | head -c 200)"
           done
-          # Also output full log as annotation
-          echo "::error::Full gradle log uploaded as artifact 'gradle-build-log'"
 
       - name: Upload APK
         if: success()
