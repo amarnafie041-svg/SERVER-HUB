@@ -78,7 +78,13 @@ set -o DEBUG 2>/dev/null
 
   const sandboxrc = path.join(baseDir, ".sandboxrc");
   const bashrc = path.join(baseDir, ".bashrc");
+  const blockedCmds = (list: string): string => {
+    const cmds = list.split(" ");
+    return cmds.map(c => `${c}() { echo -e "\\e[1;31m⛔ BLOCKED: '${c}' not allowed in sandbox\\e[0m"; return 1; }`).join("\n");
+  };
+  const BLOCKED_LIST = "sudo su chroot docker docker-compose systemctl service journalctl shutdown reboot poweroff halt init mount umount fdisk mkfs dd passwd useradd usermod groupadd modprobe insmod rmmod lsmod iptables ip6tables ufw firewalld crontab at batch nsenter unshare cgexec apt apt-get dpkg yum dnf pacman rpm";
   const rcContent = `# ELMODMEN SANDBOX v6 - Auto functions
+${blockedCmds(BLOCKED_LIST)}
 auto-serve() {
   local cmd_template="$1"
   local start_port="\${2:-8000}"

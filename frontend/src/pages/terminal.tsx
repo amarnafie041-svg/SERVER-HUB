@@ -321,7 +321,7 @@ export default function TerminalPage() {
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", "Noto Naskh Arabic", "Amiri", monospace',
       fontSize: fontSize,
       lineHeight: 1.2,
-      letterSpacing: 0.2,
+      letterSpacing: 0,
       fontWeight: "400", fontWeightBold: "700",
       cursorBlink: true, cursorStyle: "block",
       cursorInactiveStyle: "none",
@@ -554,7 +554,7 @@ export default function TerminalPage() {
         .terminal-container .xterm-viewport::-webkit-scrollbar-track { background: transparent; }
         .terminal-container .xterm-rows { unicode-bidi: plaintext; direction: auto; }
         .terminal-container .xterm-rows > div { direction: auto; unicode-bidi: plaintext; }
-        .terminal-container .xterm-rows .xterm-char-measur { font-feature-settings: "arab" 1; font-variant-ligatures: no-contextual; }
+        .terminal-container .xterm-rows .xterm-char-measur { font-feature-settings: "arab" 1; font-variant-ligatures: normal; }
         .terminal-container .xterm-rows span { unicode-bidi: plaintext; direction: auto; white-space: pre; }
         .terminal-container .xterm-rows .xterm-cursor { unicode-bidi: embed; }
         .terminal-container .xterm-rows .xterm-chars { unicode-bidi: plaintext; direction: auto; }
