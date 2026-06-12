@@ -7,22 +7,31 @@ import { promisify } from "util";
 import { logger } from "../lib/logger";
 import { authenticate } from "../middleware/authenticate";
 import { dockerManager } from "../lib/docker-manager";
+import { sandboxManager } from "../lib/sandbox-manager";
 
 const execFileAsync = promisify(execFile);
 
 const router: IRouter = Router();
 
-const BASE_DIR = process.env.FILES_BASE_DIR || process.env.HOME || process.env.USERPROFILE || "/";
+const FALLBACK_BASE_DIR = process.env.FILES_BASE_DIR || process.env.HOME || process.env.USERPROFILE || "/";
 
-function safePath(requestPath: string): string | null {
+function safePath(requestPath: string, baseDir?: string): string | null {
+  const root = baseDir || FALLBACK_BASE_DIR;
   const normalized = path.normalize(requestPath);
   if (path.isAbsolute(normalized)) {
-    if (!normalized.startsWith(BASE_DIR)) return null;
+    if (!normalized.startsWith(root)) return null;
     return normalized;
   }
-  const resolved = path.resolve(BASE_DIR, normalized);
-  if (!resolved.startsWith(BASE_DIR)) return null;
+  const resolved = path.resolve(root, normalized);
+  if (!resolved.startsWith(root)) return null;
   return resolved;
+}
+
+function getUserBaseDir(userId: string): string {
+  const home = sandboxManager.getUserSandboxHome(userId);
+  if (home) return home;
+  sandboxManager.ensureUserSandbox(userId);
+  return sandboxManager.getUserSandboxHome(userId) || FALLBACK_BASE_DIR;
 }
 
 function formatBytes(bytes: number): string {
@@ -113,28 +122,22 @@ function getFileInfo(filePath: string): {
   }
 }
 
-async function withUserIsolation(
-  username: string,
-  userId: string,
-  filePath: string,
-  action: (isolated: boolean) => Promise<any>,
-  fallbackResult: any = null
-): Promise<any> {
-  const isolated = dockerManager.isAvailable;
-  if (isolated) {
+async function ensureUserIsolation(userId: string, username: string): Promise<void> {
+  if (dockerManager.isAvailable) {
     await dockerManager.ensureContainer(username, userId);
+  } else {
+    sandboxManager.ensureUserSandbox(userId);
   }
-  return action(isolated);
 }
 
 router.get("/files/list", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
+    await ensureUserIsolation(userId, username);
     const reqPath = (req.query.path as string) || "/";
 
     if (dockerManager.isAvailable) {
-      await dockerManager.ensureContainer(username, userId);
       const items = await dockerManager.execFileList(username, reqPath);
       if (items) {
         res.json({ path: reqPath, items });
@@ -142,7 +145,8 @@ router.get("/files/list", authenticate, async (req: Request, res: Response): Pro
       }
     }
 
-    const dirPath = safePath(reqPath);
+    const baseDir = getUserBaseDir(userId);
+    const dirPath = safePath(reqPath, baseDir);
     if (!dirPath) { res.status(400).json({ error: "Invalid path" }); return; }
     if (!fs.existsSync(dirPath)) { res.status(404).json({ error: "Path not found" }); return; }
     const stat = fs.statSync(dirPath);
@@ -167,11 +171,11 @@ router.get("/files/read", authenticate, async (req: Request, res: Response): Pro
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
+    await ensureUserIsolation(userId, username);
     const filePath = req.query.path as string;
     if (!filePath) { res.status(400).json({ error: "Path required" }); return; }
 
     if (dockerManager.isAvailable) {
-      await dockerManager.ensureContainer(username, userId);
       const content = await dockerManager.execFileRead(username, filePath);
       if (content !== null) {
         const name = filePath.split("/").pop() || "";
@@ -186,7 +190,8 @@ router.get("/files/read", authenticate, async (req: Request, res: Response): Pro
       }
     }
 
-    const resolved = safePath(filePath);
+    const baseDir = getUserBaseDir(userId);
+    const resolved = safePath(filePath, baseDir);
     if (!resolved) { res.status(400).json({ error: "Invalid path" }); return; }
     if (!fs.existsSync(resolved)) { res.status(404).json({ error: "File not found" }); return; }
     const stat = fs.statSync(resolved);
@@ -208,6 +213,7 @@ router.post("/files/write", authenticate, async (req: Request, res: Response): P
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
+    await ensureUserIsolation(userId, username);
     const { path: filePath, content } = req.body;
     if (!filePath || content == null) {
       res.status(400).json({ success: false, message: "Path and content required" });
@@ -215,7 +221,6 @@ router.post("/files/write", authenticate, async (req: Request, res: Response): P
     }
 
     if (dockerManager.isAvailable) {
-      await dockerManager.ensureContainer(username, userId);
       const ok = await dockerManager.execFileWrite(username, filePath, content);
       if (ok) {
         res.json({ success: true, message: "File saved (isolated)" });
@@ -223,7 +228,8 @@ router.post("/files/write", authenticate, async (req: Request, res: Response): P
       }
     }
 
-    const resolved = safePath(filePath);
+    const baseDir = getUserBaseDir(userId);
+    const resolved = safePath(filePath, baseDir);
     if (!resolved) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
     fs.mkdirSync(path.dirname(resolved), { recursive: true });
     fs.writeFileSync(resolved, content, "utf8");
@@ -238,11 +244,11 @@ router.delete("/files/delete", authenticate, async (req: Request, res: Response)
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
+    await ensureUserIsolation(userId, username);
     const filePath = req.query.path as string;
     if (!filePath) { res.status(400).json({ success: false, message: "Path required" }); return; }
 
     if (dockerManager.isAvailable) {
-      await dockerManager.ensureContainer(username, userId);
       const ok = await dockerManager.execFileDelete(username, filePath);
       if (ok) {
         res.json({ success: true, message: "Deleted successfully (isolated)" });
@@ -250,7 +256,8 @@ router.delete("/files/delete", authenticate, async (req: Request, res: Response)
       }
     }
 
-    const resolved = safePath(filePath);
+    const baseDir = getUserBaseDir(userId);
+    const resolved = safePath(filePath, baseDir);
     if (!resolved) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
     if (!fs.existsSync(resolved)) { res.status(404).json({ success: false, message: "File not found" }); return; }
     const stat = fs.statSync(resolved);
@@ -270,6 +277,7 @@ router.post("/files/rename", authenticate, async (req: Request, res: Response): 
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
+    await ensureUserIsolation(userId, username);
     const { oldPath, newPath } = req.body;
     if (!oldPath || !newPath) {
       res.status(400).json({ success: false, message: "oldPath and newPath required" });
@@ -277,7 +285,6 @@ router.post("/files/rename", authenticate, async (req: Request, res: Response): 
     }
 
     if (dockerManager.isAvailable) {
-      await dockerManager.ensureContainer(username, userId);
       const ok = await dockerManager.execRename(username, oldPath, newPath);
       if (ok) {
         res.json({ success: true, message: "Renamed successfully (isolated)" });
@@ -285,8 +292,9 @@ router.post("/files/rename", authenticate, async (req: Request, res: Response): 
       }
     }
 
-    const resolvedOld = safePath(oldPath);
-    const resolvedNew = safePath(newPath);
+    const baseDir = getUserBaseDir(userId);
+    const resolvedOld = safePath(oldPath, baseDir);
+    const resolvedNew = safePath(newPath, baseDir);
     if (!resolvedOld || !resolvedNew) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
     if (!fs.existsSync(resolvedOld)) { res.status(404).json({ success: false, message: "Source not found" }); return; }
     fs.mkdirSync(path.dirname(resolvedNew), { recursive: true });
@@ -302,11 +310,11 @@ router.post("/files/mkdir", authenticate, async (req: Request, res: Response): P
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
+    await ensureUserIsolation(userId, username);
     const { path: dirPath } = req.body;
     if (!dirPath) { res.status(400).json({ success: false, message: "Path required" }); return; }
 
     if (dockerManager.isAvailable) {
-      await dockerManager.ensureContainer(username, userId);
       const ok = await dockerManager.execMkdir(username, dirPath);
       if (ok) {
         res.json({ success: true, message: "Directory created (isolated)" });
@@ -314,7 +322,8 @@ router.post("/files/mkdir", authenticate, async (req: Request, res: Response): P
       }
     }
 
-    const resolved = safePath(dirPath);
+    const baseDir = getUserBaseDir(userId);
+    const resolved = safePath(dirPath, baseDir);
     if (!resolved) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
     fs.mkdirSync(resolved, { recursive: true });
     res.json({ success: true, message: "Directory created" });
@@ -328,13 +337,11 @@ router.post("/files/upload", authenticate, async (req: Request, res: Response): 
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
+    await ensureUserIsolation(userId, username);
     const busboy = await import("busboy");
     const uploadPath = (req.headers["x-upload-path"] as string) || "/home/runner";
 
     const useDocker = dockerManager.isAvailable;
-    if (useDocker) {
-      await dockerManager.ensureContainer(username, userId);
-    }
 
     const bb = busboy.default({
       headers: req.headers,
@@ -342,6 +349,11 @@ router.post("/files/upload", authenticate, async (req: Request, res: Response): 
     });
     let pendingWrites = 0;
     let uploadError: string | null = null;
+    let baseDir = "";
+
+    if (!useDocker) {
+      baseDir = getUserBaseDir(userId);
+    }
 
     const checkDone = () => {
       if (pendingWrites === 0) {
@@ -385,7 +397,7 @@ router.post("/files/upload", authenticate, async (req: Request, res: Response): 
           checkDone();
         });
       } else {
-        const safeDir = safePath(uploadPath);
+        const safeDir = safePath(uploadPath, baseDir);
         if (!safeDir) { uploadError = "Invalid upload path"; pendingWrites--; checkDone(); return; }
         const dest = path.join(safeDir, safeFilename);
         fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -427,18 +439,19 @@ router.get("/files/search", authenticate, async (req: Request, res: Response): P
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
+    await ensureUserIsolation(userId, username);
     const q = req.query.q as string;
     const searchPath = (req.query.path as string) || "/home/runner";
     if (!q) { res.status(400).json({ error: "Query required" }); return; }
 
     if (dockerManager.isAvailable) {
-      await dockerManager.ensureContainer(username, userId);
       const items = await dockerManager.execFileSearch(username, q, searchPath);
       res.json(items);
       return;
     }
 
-    const resolved = safePath(searchPath);
+    const baseDir = getUserBaseDir(userId);
+    const resolved = safePath(searchPath, baseDir);
     if (!resolved || !fs.existsSync(resolved)) { res.json([]); return; }
 
     const results: ReturnType<typeof getFileInfo>[] = [];
@@ -474,11 +487,11 @@ router.post("/files/extract", authenticate, async (req: Request, res: Response):
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
+    await ensureUserIsolation(userId, username);
     const { path: archivePath, dest } = req.body;
     if (!archivePath) { res.status(400).json({ success: false, message: "Path required" }); return; }
 
     if (dockerManager.isAvailable) {
-      await dockerManager.ensureContainer(username, userId);
       const ok = await dockerManager.execExtract(username, archivePath, dest);
       if (ok) {
         res.json({ success: true, files: [] });
@@ -486,7 +499,8 @@ router.post("/files/extract", authenticate, async (req: Request, res: Response):
       }
     }
 
-    const resolved = safePath(archivePath);
+    const baseDir = getUserBaseDir(userId);
+    const resolved = safePath(archivePath, baseDir);
     if (!resolved) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
     if (!fs.existsSync(resolved)) { res.status(404).json({ success: false, message: "Archive not found" }); return; }
     const stat = fs.statSync(resolved);
@@ -494,7 +508,7 @@ router.post("/files/extract", authenticate, async (req: Request, res: Response):
 
     const ext = path.extname(resolved).toLowerCase();
     const baseName = path.basename(resolved);
-    const extractDir = dest ? (safePath(dest) || path.dirname(resolved)) : path.dirname(resolved);
+    const extractDir = dest ? (safePath(dest, baseDir) || path.dirname(resolved)) : path.dirname(resolved);
     fs.mkdirSync(extractDir, { recursive: true });
 
     const isTarGz = baseName.endsWith(".tar.gz") || baseName.endsWith(".tgz");

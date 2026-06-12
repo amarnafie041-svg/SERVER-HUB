@@ -4,7 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { IncomingMessage } from "http";
 import * as os from "os";
 import { logger } from "../lib/logger";
-import { authenticate } from "../middleware/authenticate";
+import { authenticate, requireAdmin } from "../middleware/authenticate";
 import { verifyToken } from "../lib/jwt";
 import { logActivity } from "../routes/activity";
 import { dockerManager } from "../lib/docker-manager";
@@ -72,29 +72,56 @@ terminalRouterAPI.get("/terminal/sandbox-stats", authenticate, async (_req: Requ
   res.json(sandboxManager.getStats());
 });
 
-terminalRouterAPI.get("/terminal/sessions", authenticate, async (_req: Request, res: Response): Promise<void> => {
-  const list = Array.from(sessions.values()).map((s) => ({
-    id: s.id,
-    name: s.name,
-    created_at: s.created_at,
-    status: s.status,
-    isolated: s.isolated,
-  }));
+terminalRouterAPI.get("/terminal/sandboxes", authenticate, requireAdmin, async (_req: Request, res: Response): Promise<void> => {
+  const sandboxes = sandboxManager.getAllUserSandboxes();
+  res.json(sandboxes);
+});
+
+terminalRouterAPI.delete("/terminal/sandboxes/:userId", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const userId = req.params.userId;
+  sandboxManager.destroyUserSandbox(userId);
+  res.json({ success: true, message: `Sandbox for user ${userId} destroyed` });
+});
+
+terminalRouterAPI.get("/terminal/sessions", authenticate, async (req: Request, res: Response): Promise<void> => {
+  const currentUser = (req as any).user?.username || "";
+  const isAdmin = (req as any).user?.role === "admin";
+  const list = Array.from(sessions.values())
+    .filter((s) => isAdmin || s.username === currentUser)
+    .map((s) => ({
+      id: s.id,
+      name: s.name,
+      created_at: s.created_at,
+      status: s.status,
+      isolated: s.isolated,
+    }));
   res.json(list);
 });
 
+function assertSessionOwnership(req: Request, session: TerminalSession | undefined): { allowed: boolean; error?: { status: number; message: string } } {
+  if (!session) return { allowed: false, error: { status: 404, message: "Session not found" } };
+  const currentUser = (req as any).user?.username || "";
+  const isAdmin = (req as any).user?.role === "admin";
+  if (!isAdmin && session.username !== currentUser) {
+    return { allowed: false, error: { status: 403, message: "Forbidden — not your session" } };
+  }
+  return { allowed: true };
+}
+
 terminalRouterAPI.get("/terminal/sessions/:id/alive", authenticate, async (req: Request, res: Response): Promise<void> => {
   const session = sessions.get(req.params.id);
-  if (!session) {
-    res.json({ alive: false });
+  const ownership = assertSessionOwnership(req, session);
+  if (!ownership.allowed) {
+    const e = ownership.error!;
+    res.status(e.status).json({ alive: false, message: e.message });
     return;
   }
-  if (session.status === "exited") {
+  if (session!.status === "exited") {
     res.json({ alive: false });
     return;
   }
   try {
-    const alive = session.pty && !session.pty._closed;
+    const alive = session!.pty && !(session!.pty as any)._closed;
     res.json({ alive: !!alive });
   } catch {
     res.json({ alive: false });
@@ -189,13 +216,12 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
     }
   }
 
-  const { id: sandboxId, homeDir } = sandboxManager.createSandbox();
+  const { id: sandboxId, homeDir } = sandboxManager.ensureUserSandbox(userId);
   session.sandboxId = sandboxId;
   session.sandboxHome = homeDir;
   session.isolated = true;
 
   if (!ptyModule) {
-    sandboxManager.destroySandbox(sandboxId);
     res.status(500).json({ error: "Terminal not available" });
     return;
   }
@@ -256,7 +282,6 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
     });
   } catch (err) {
     logger.error({ err }, "Sandbox terminal failed");
-    sandboxManager.destroySandbox(sandboxId);
     res.status(500).json({ error: "Failed to create terminal session" });
   }
 });
@@ -273,14 +298,17 @@ terminalRouterAPI.delete(
       res.status(404).json({ success: false, message: "Session not found" });
       return;
     }
+    const currentUser = (req as any).user?.username || "";
+    const isAdmin = (req as any).user?.role === "admin";
+    if (!isAdmin && session.username !== currentUser) {
+      res.status(403).json({ success: false, message: "Forbidden — not your session" });
+      return;
+    }
     try {
       if (session.dockerStream) {
         try { session.dockerStream.end(); } catch {}
       }
       if (session.pty) session.pty.kill();
-      if (session.sandboxId) {
-        try { sandboxManager.destroySandbox(session.sandboxId); } catch {}
-      }
       if (session.sandboxProcess) {
         try { session.sandboxProcess.kill("SIGKILL"); } catch {}
       }

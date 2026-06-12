@@ -20,6 +20,7 @@ interface Sandbox {
 }
 
 const sandboxes = new Map<string, Sandbox>();
+const userSandboxes = new Map<string, { id: string; homeDir: string }>();
 const CLEANUP_INTERVAL = 5 * 60 * 1000;
 const MAX_IDLE = 30 * 60 * 1000;
 
@@ -27,6 +28,10 @@ const isWindows = os.platform() === "win32";
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+function sanitizeUserId(userId: string): string {
+  return userId.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase();
 }
 
 function createSandboxDirs(baseDir: string): void {
@@ -42,11 +47,12 @@ function createSandboxDirs(baseDir: string): void {
   }
 }
 
-function createHomeDir(): string {
+function createHomeDir(userId?: string): string {
   const id = generateId();
+  const userPart = userId ? sanitizeUserId(userId) + "-" : "";
   const baseDir = process.env.SANDBOX_BASE_DIR
-    ? path.join(process.env.SANDBOX_BASE_DIR, "sandboxes", id)
-    : path.join(os.tmpdir(), "sh-sandbox", id);
+    ? path.join(process.env.SANDBOX_BASE_DIR, "sandboxes", userPart + id)
+    : path.join(os.tmpdir(), "sh-sandbox", userPart + id);
   createSandboxDirs(baseDir);
 
   const sandboxShell = path.join(baseDir, ".sandbox-shell.sh");
@@ -169,13 +175,71 @@ export const sandboxManager = {
     return true;
   },
 
-  createSandbox(): { id: string; homeDir: string } {
+  createSandbox(userId?: string): { id: string; homeDir: string } {
     const id = generateId();
-    const homeDir = createHomeDir();
+    const homeDir = createHomeDir(userId);
     const sandbox: Sandbox = { id, homeDir, process: null, created: new Date(), lastActivity: new Date() };
     sandboxes.set(id, sandbox);
-    logger.info({ id, homeDir }, "Sandbox created");
+    if (userId) {
+      userSandboxes.set(userId, { id, homeDir });
+    }
+    logger.info({ id, homeDir, userId: userId || "none" }, "Sandbox created");
     return { id, homeDir };
+  },
+
+  ensureUserSandbox(userId: string): { id: string; homeDir: string } {
+    const existing = userSandboxes.get(userId);
+    if (existing) {
+      const sandbox = sandboxes.get(existing.id);
+      if (sandbox) {
+        logger.info({ userId, id: existing.id, homeDir: existing.homeDir }, "Reusing existing user sandbox");
+        return { id: existing.id, homeDir: existing.homeDir };
+      }
+      userSandboxes.delete(userId);
+    }
+    const result = this.createSandbox(userId);
+    userSandboxes.set(userId, { id: result.id, homeDir: result.homeDir });
+    logger.info({ userId, id: result.id, homeDir: result.homeDir }, "User sandbox created");
+    return result;
+  },
+
+  getUserSandboxHome(userId: string): string | null {
+    const entry = userSandboxes.get(userId);
+    if (entry) {
+      const sandbox = sandboxes.get(entry.id);
+      if (sandbox) return sandbox.homeDir;
+      userSandboxes.delete(userId);
+    }
+    return null;
+  },
+
+  destroyUserSandbox(userId: string): void {
+    const entry = userSandboxes.get(userId);
+    if (!entry) return;
+    this.destroySandbox(entry.id);
+    userSandboxes.delete(userId);
+    logger.info({ userId }, "User sandbox destroyed");
+  },
+
+  getUserSandboxId(userId: string): string | null {
+    const entry = userSandboxes.get(userId);
+    if (entry) {
+      const sandbox = sandboxes.get(entry.id);
+      if (sandbox) return entry.id;
+      userSandboxes.delete(userId);
+    }
+    return null;
+  },
+
+  getAllUserSandboxes(): Array<{ userId: string; sandboxId: string; homeDir: string; created: Date }> {
+    const result: Array<{ userId: string; sandboxId: string; homeDir: string; created: Date }> = [];
+    for (const [userId, entry] of userSandboxes) {
+      const sandbox = sandboxes.get(entry.id);
+      if (sandbox) {
+        result.push({ userId, sandboxId: entry.id, homeDir: entry.homeDir, created: sandbox.created });
+      }
+    }
+    return result;
   },
 
   spawnShell(
