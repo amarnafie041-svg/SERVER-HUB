@@ -4,6 +4,13 @@ import os from "os";
 import { spawn, type ChildProcess, execSync } from "child_process";
 import { logger } from "./logger";
 
+let ptyModule: any = null;
+try {
+  ptyModule = require("node-pty");
+} catch {
+  logger.warn("node-pty not available in sandbox, using fallback");
+}
+
 interface Sandbox {
   id: string;
   homeDir: string;
@@ -235,7 +242,31 @@ export const sandboxManager = {
       TERMINFO: "/usr/share/terminfo",
     };
 
-    const proc = spawn(shellPath, args, {
+    if (ptyModule) {
+      const ptyProcess = ptyModule.spawn(shellPath, args, {
+        name: "xterm-256color",
+        cols,
+        rows,
+        cwd: sandbox.homeDir,
+        env,
+      });
+
+      ptyProcess.onData((data: string) => {
+        sandbox.lastActivity = new Date();
+        onData(data);
+      });
+
+      ptyProcess.onExit(() => {
+        sandbox.process = null;
+        onExit();
+      });
+
+      (ptyProcess as any).write = (data: string) => ptyProcess.write(data);
+      sandbox.process = ptyProcess as any;
+      return ptyProcess as any;
+    }
+
+    const proc = spawn(shellPath, ["-i", ...args], {
       cwd: sandbox.homeDir,
       env,
       stdio: ["pipe", "pipe", "pipe"],
@@ -267,19 +298,27 @@ export const sandboxManager = {
 
   writeToShell(id: string, data: string): void {
     const sandbox = sandboxes.get(id);
-    if (sandbox?.process?.stdin?.writable) {
-      sandbox.lastActivity = new Date();
-      sandbox.process.stdin.write(data);
-    }
+    if (!sandbox?.process) return;
+    sandbox.lastActivity = new Date();
+    try {
+      if (typeof (sandbox.process as any).write === "function") {
+        (sandbox.process as any).write(data);
+      } else if (sandbox.process.stdin?.writable) {
+        sandbox.process.stdin.write(data);
+      }
+    } catch {}
   },
 
   resizeShell(id: string, cols: number, rows: number): void {
     const sandbox = sandboxes.get(id);
-    if (sandbox?.process) {
-      try {
+    if (!sandbox?.process) return;
+    try {
+      if (typeof (sandbox.process as any).resize === "function") {
+        (sandbox.process as any).resize(cols, rows);
+      } else {
         (sandbox.process as any).stdin?.setSize?.(cols, rows);
-      } catch {}
-    }
+      }
+    } catch {}
   },
 
   destroySandbox(id: string): void {
