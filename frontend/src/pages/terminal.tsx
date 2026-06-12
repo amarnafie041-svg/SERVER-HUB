@@ -214,7 +214,7 @@ export default function TerminalPage() {
     const grn = g(46);
     const ylw = g(226);
     const cols = term.cols || 80;
-    const raw = cols < 81 ? MOBILE_BANNER : DESKTOP_BANNER;
+    const raw = cols < 45 ? MOBILE_BANNER : DESKTOP_BANNER;
     const banner = raw
       .replace(/\$\{grn\}/g, grn)
       .replace(/\$\{rst\}/g, rst)
