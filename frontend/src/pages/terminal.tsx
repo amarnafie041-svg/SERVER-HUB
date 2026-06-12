@@ -67,41 +67,43 @@ const VIRTUAL_KEYS = [
 const S = (n: number) => " ".repeat(n);
 
 const DESKTOP_BANNER = [
-  "${grn}╔" + "═".repeat(70) + "╗${rst}",
-  "${grn}║${rst}" + S(70) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(28) + "${bold}${ylw}≪  ELMODMEN  ≫${rst}" + S(28) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(28) + "${bold}${ylw}≪  HOST v6  ≫${rst}" + S(29) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(70) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(22) + "${dim}${g(245)}Isolated Sandbox Terminal${rst}" + S(23) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(19) + "${dim}${g(245)}Type commands after the ${rst}${ylw}$${rst}${dim}${g(245)} prompt${rst}" + S(19) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(70) + "${grn}║${rst}",
-  "${grn}╚" + "═".repeat(70) + "╝${rst}",
+  "${grn}╔" + "═".repeat(80) + "╗${rst}",
+  "${grn}║${rst}" + S(80) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(33) + "${bold}${ylw}≪  ELMODMEN  ≫${rst}" + S(33) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(36) + "${bold}${ylw}≪  VPS  ≫${rst}" + S(35) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(80) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(27) + "${dim}${g(245)}Isolated Sandbox Terminal${rst}" + S(28) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(24) + "${dim}${g(245)}Type commands after the ${rst}${ylw}$${rst}${dim}${g(245)} prompt${rst}" + S(24) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(80) + "${grn}║${rst}",
+  "${grn}╚" + "═".repeat(80) + "╝${rst}",
   "",
   "${ylw}$ ${rst}",
 ].join("\r\n");
 
 const MEDIUM_BANNER = [
-  "${grn}╔" + "═".repeat(40) + "╗${rst}",
-  "${grn}║${rst}" + S(40) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(12) + "${bold}${ylw}ELMODMEN HOST v6${rst}" + S(12) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(40) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(7) + "${dim}${g(245)}Isolated Sandbox Terminal${rst}" + S(8) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(10) + "${dim}${g(245)}Type ${rst}${ylw}$${rst}${dim}${g(245)} then commands${rst}" + S(10) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(40) + "${grn}║${rst}",
-  "${grn}╚" + "═".repeat(40) + "╝${rst}",
+  "${grn}╔" + "═".repeat(50) + "╗${rst}",
+  "${grn}║${rst}" + S(50) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(18) + "${bold}${ylw}≪  ELMODMEN  ≫${rst}" + S(18) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(20) + "${bold}${ylw}≪  VPS  ≫${rst}" + S(21) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(50) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(12) + "${dim}${g(245)}Isolated Sandbox Terminal${rst}" + S(13) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(11) + "${dim}${g(245)}Type commands after ${rst}${ylw}$${rst}${dim}${g(245)} prompt${rst}" + S(11) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(50) + "${grn}║${rst}",
+  "${grn}╚" + "═".repeat(50) + "╝${rst}",
   "",
   "${ylw}$ ${rst}",
 ].join("\r\n");
 
 const MOBILE_BANNER = [
-  "${grn}╔" + "═".repeat(24) + "╗${rst}",
-  "${grn}║${rst}" + S(24) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(5) + "${bold}${ylw}ELMODMEN HOST${rst}" + S(6) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(24) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(4) + "${dim}${g(245)}Sandbox Terminal${rst}" + S(4) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(4) + "${dim}${g(245)}Type ${rst}${ylw}$${rst}${dim}${g(245)} then cmds${rst}" + S(4) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(24) + "${grn}║${rst}",
-  "${grn}╚" + "═".repeat(24) + "╝${rst}",
+  "${grn}╔" + "═".repeat(30) + "╗${rst}",
+  "${grn}║${rst}" + S(30) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(8) + "${bold}${ylw}≪  ELMODMEN  ≫${rst}" + S(8) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(10) + "${bold}${ylw}≪  VPS  ≫${rst}" + S(11) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(30) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(7) + "${dim}${g(245)}Isolated Sandbox${rst}" + S(7) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(7) + "${dim}${g(245)}Type ${rst}${ylw}$${rst}${dim}${g(245)} then cmds${rst}" + S(7) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(30) + "${grn}║${rst}",
+  "${grn}╚" + "═".repeat(30) + "╝${rst}",
   "",
   "${ylw}$ ${rst}",
 ].join("\r\n");
@@ -221,9 +223,9 @@ export default function TerminalPage() {
     const ylw = g(226);
     const cols = term.cols || 80;
     let raw;
-    if (cols >= 74) {
+    if (cols >= 82) {
       raw = DESKTOP_BANNER;
-    } else if (cols >= 44) {
+    } else if (cols >= 52) {
       raw = MEDIUM_BANNER;
     } else {
       raw = MOBILE_BANNER;
