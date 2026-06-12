@@ -67,43 +67,21 @@ const VIRTUAL_KEYS = [
 const S = (n: number) => " ".repeat(n);
 
 const DESKTOP_BANNER = [
-  "${grn}╔" + "═".repeat(80) + "╗${rst}",
-  "${grn}║${rst}" + S(80) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(3) + "${bold}${ylw}  _____ _     __  __  ___  ____  __  __ _____ _   _  __     ______  ____  ${rst}" + S(3) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(3) + "${bold}${ylw} | ____| |   |  \\/  |/ _ \\|  _ \\|  \\/  | ____| \\ | | \\ \\   / /  _ \\/ ___| ${rst}" + S(3) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(3) + "${bold}${ylw} |  _| | |   | |\\/| | | | | | | | |\\/| |  _| |  \\| |  \\ \\ / /| |_) \\___ \\ ${rst}" + S(3) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(3) + "${bold}${ylw} | |___| |___| |  | | |_| | |_| | |  | | |___| |\\  |   \\ V / |  __/ ___) |${rst}" + S(3) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(3) + "${bold}${ylw} |_____|_____|_|  |_|\\___/|____/|_|  |_|_____|_| \\_|    \\_/  |_|   |____/ ${rst}" + S(3) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(3) + "${bold}${ylw}                                                                          ${rst}" + S(3) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(80) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(27) + "${dim}${g(245)}Isolated Sandbox Terminal${rst}" + S(28) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(24) + "${dim}${g(245)}Type commands after the ${rst}${ylw}$${rst}${dim}${g(245)} prompt${rst}" + S(24) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(80) + "${grn}║${rst}",
-  "${grn}╚" + "═".repeat(80) + "╝${rst}",
-  "",
   "${ylw}$ ${rst}",
 ].join("\r\n");
 
 const MEDIUM_BANNER = [
-  "${grn}╔" + "═".repeat(50) + "╗${rst}",
-  "${grn}║${rst}" + S(50) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(18) + "${bold}${ylw}≪  ELMODMEN  ≫${rst}" + S(18) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(20) + "${bold}${ylw}≪  VPS  ≫${rst}" + S(21) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(50) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(12) + "${dim}${g(245)}Isolated Sandbox Terminal${rst}" + S(13) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(11) + "${dim}${g(245)}Type commands after ${rst}${ylw}$${rst}${dim}${g(245)} prompt${rst}" + S(11) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(50) + "${grn}║${rst}",
-  "${grn}╚" + "═".repeat(50) + "╝${rst}",
-  "",
   "${ylw}$ ${rst}",
 ].join("\r\n");
 
 const MOBILE_BANNER = [
   "${grn}╔" + "═".repeat(30) + "╗${rst}",
   "${grn}║${rst}" + S(30) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(6) + "${bold}${ylw}≪  ELMODMEN VPS  ≫${rst}" + S(6) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(6) + "${bold}${ylw} +-+-+-+-+-+-+-+-+${rst}" + S(6) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(6) + "${bold}${ylw} |E|L|M|O|D|M|E|N|${rst}" + S(6) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(6) + "${bold}${ylw} +-+-+-+-+-+-+-+-+${rst}" + S(6) + "${grn}║${rst}",
   "${grn}║${rst}" + S(7) + "${dim}${g(245)}Isolated Sandbox${rst}" + S(7) + "${grn}║${rst}",
-  "${grn}║${rst}" + S(4) + "${dim}${g(245)}≪  ${rst}${ylw}$${rst}${dim}${g(245)}  then commands  ≫${rst}" + S(4) + "${grn}║${rst}",
+  "${grn}║${rst}" + S(6) + "${dim}${g(245)}  ${rst}${ylw}$${rst}${dim}${g(245)}  then commands${rst}" + S(6) + "${grn}║${rst}",
   "${grn}║${rst}" + S(30) + "${grn}║${rst}",
   "${grn}╚" + "═".repeat(30) + "╝${rst}",
   "",
@@ -225,10 +203,8 @@ export default function TerminalPage() {
     const ylw = g(226);
     const cols = term.cols || 80;
     let raw;
-    if (cols >= 82) {
-      raw = DESKTOP_BANNER;
-    } else if (cols >= 52) {
-      raw = MEDIUM_BANNER;
+    if (cols >= 52) {
+      raw = cols >= 82 ? DESKTOP_BANNER : MEDIUM_BANNER;
     } else {
       raw = MOBILE_BANNER;
     }
