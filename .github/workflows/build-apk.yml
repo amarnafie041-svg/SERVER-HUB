@@ -1,0 +1,48 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm --prefix frontend install
+
+      - name: Build frontend
+        run: npm --prefix frontend run build
+        env:
+          VITE_API_URL: https://server-hub-v5-wrpt.onrender.com
+
+      - name: Copy Capacitor
+        run: npx --prefix frontend cap copy android
+
+      - name: Sync Capacitor
+        run: npx --prefix frontend cap sync android
+
+      - name: Build APK
+        run: cd frontend/android && chmod +x gradlew && ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SERVER-HUB-APK
+          path: frontend/android/app/build/outputs/apk/debug/*.apk

@@ -175,8 +175,9 @@ export default function TerminalPage() {
     setStatuses((prev) => ({ ...prev, [tabId]: s }));
 
   const buildWsUrl = (sessionId: string) => {
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${proto}//${window.location.host}/api/terminal/ws/${sessionId}`;
+    const base = import.meta.env.VITE_API_URL || window.location.origin;
+    const wsBase = base.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
+    return `${wsBase}/api/terminal/ws/${sessionId}`;
   };
 
   const welcomeShown = useRef<Record<string, boolean>>({});

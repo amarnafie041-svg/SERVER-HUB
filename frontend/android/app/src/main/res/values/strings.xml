@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ELMODMEN VPS</string>
+    <string name="title_activity_main">ELMODMEN VPS</string>
+    <string name="package_name">com.elmodmen.vps</string>
+    <string name="custom_url_scheme">com.elmodmen.vps</string>
+</resources>
