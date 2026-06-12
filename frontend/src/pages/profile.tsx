@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/auth";
 import { useLang } from "@/contexts/language";
 import { api, authFetch } from "@/lib/api";
-import { Camera, User, Lock, Shield, Clock, CheckCircle2, Calendar, Mail, BadgeCheck, AlertTriangle } from "lucide-react";
+import { Camera, User, Lock, Shield, Clock, CheckCircle2, Calendar, BadgeCheck, AlertTriangle, Mail, AtSign, Palette, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -68,7 +68,6 @@ export default function ProfilePage() {
         <p className="text-zinc-400 text-sm mt-1">{t("account_info")}</p>
       </div>
 
-      {/* Profile Header / Avatar Card */}
       <div className="rounded-2xl border p-4 md:p-6 relative overflow-hidden animate-fadeIn"
         style={{ background: "linear-gradient(135deg, #140a24 0%, #1a0e30 100%)", borderColor: "rgba(139,92,246,0.2)" }}>
         <div className="absolute top-0 right-0 w-48 h-48 pointer-events-none opacity-10"
@@ -89,7 +88,7 @@ export default function ProfilePage() {
           <div className="text-center md:text-left flex-1">
             <h2 className="text-lg md:text-xl font-bold text-white">{user?.display_name}</h2>
             <p className="text-zinc-500 text-sm">@{user?.username}</p>
-            <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
+            <div className="flex items-center justify-center md:justify-start gap-2 mt-2 flex-wrap">
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider"
                 style={{ background: user?.role === "admin" ? "rgba(168,85,247,0.15)" : "rgba(59,130,246,0.15)", color: user?.role === "admin" ? "#a855f7" : "#3b82f6", border: `1px solid ${user?.role === "admin" ? "rgba(168,85,247,0.3)" : "rgba(59,130,246,0.3)"}` }}>
                 <BadgeCheck className="w-3 h-3" /> {user?.role}
@@ -111,7 +110,6 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Left - Account Info */}
         <div className="space-y-4">
           <div className="rounded-2xl border p-4 space-y-3 animate-fadeIn" style={{ background: "#140a24", borderColor: "rgba(139,92,246,0.2)" }}>
             <div className="flex items-center gap-2 text-xs text-zinc-400 font-semibold uppercase tracking-wider">
@@ -136,7 +134,25 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
-          {/* Section tabs for mobile */}
+
+          {/* Sidebar preview */}
+          <div className="rounded-2xl border p-4 animate-fadeIn hidden lg:block" style={{ background: "#140a24", borderColor: "rgba(139,92,246,0.2)" }}>
+            <div className="text-xs text-zinc-400 font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+              <AtSign className="w-3.5 h-3.5" /> Preview
+            </div>
+            <div className="flex items-center gap-3 rounded-lg bg-black/20 px-3 py-2.5 border" style={{ borderColor: "rgba(139,92,246,0.15)" }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden"
+                style={{ background: avatar ? "none" : "linear-gradient(135deg,#6d28d9,#a855f7)" }}>
+                {avatar ? <img src={avatar} className="w-full h-full object-cover" /> : <span className="text-white">{(displayName || "?")[0].toUpperCase()}</span>}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{displayName || user?.username}</p>
+                <p className="text-[10px] text-zinc-500">@{user?.username}</p>
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-600 mt-2 text-center">Appears in sidebar &amp; navbar</p>
+          </div>
+
           <div className="flex lg:hidden gap-1 p-1 rounded-xl border" style={{ background: "#140a24", borderColor: "rgba(139,92,246,0.2)" }}>
             <button onClick={() => setActiveSection("profile")}
               className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${activeSection === "profile" ? "bg-primary/20 text-white" : "text-zinc-500"}`}>
@@ -149,9 +165,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Right - Edit Form */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Display Name - always visible on desktop, toggle on mobile */}
           <div className={`rounded-2xl border p-4 md:p-5 animate-fadeIn ${activeSection !== "profile" ? "hidden lg:block" : ""}`}
             style={{ background: "#140a24", borderColor: "rgba(139,92,246,0.2)" }}>
             <div className="flex items-center gap-2 mb-4 text-sm font-medium text-zinc-300">
@@ -161,7 +175,6 @@ export default function ProfilePage() {
               className="bg-[#1d1033] border-[rgba(139,92,246,0.3)] text-white placeholder:text-zinc-600" placeholder={t("display_name")} />
           </div>
 
-          {/* Change Password */}
           <div className={`rounded-2xl border p-4 md:p-5 animate-fadeIn ${activeSection !== "password" ? "hidden lg:block" : ""}`}
             style={{ background: "#140a24", borderColor: "rgba(139,92,246,0.2)" }}>
             <div className="flex items-center gap-2 mb-4 text-sm font-medium text-zinc-300">
@@ -188,7 +201,7 @@ export default function ProfilePage() {
               </span>
             ) : (
               <span className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> {t("save_profile")}
+                <Save className="w-4 h-4" /> {t("save_profile")}
               </span>
             )}
           </Button>
