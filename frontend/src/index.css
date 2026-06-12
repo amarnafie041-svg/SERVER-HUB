@@ -196,6 +196,8 @@
   min-width: 0;
   min-height: 0;
   background: #050505;
+  overflow: hidden;
+  contain: layout;
 }
 
 .xterm {
@@ -203,14 +205,22 @@
   padding: 4px 6px;
   background: #050505;
   border-radius: 0;
+  box-sizing: border-box;
 }
 
 .xterm-viewport {
   scrollbar-width: thin;
+  scrollbar-color: rgba(139,92,246,0.25) transparent;
 }
 
 .xterm-screen {
   padding: 0 2px;
+  box-sizing: border-box;
+}
+
+.xterm-rows {
+  contain: layout style;
+  overflow: hidden;
 }
 
 .xterm-rows > div {

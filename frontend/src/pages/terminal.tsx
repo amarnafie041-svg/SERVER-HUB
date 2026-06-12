@@ -65,7 +65,7 @@ const VIRTUAL_KEYS = [
 ];
 
 const DESKTOP_BANNER = [
-  "${grn}┌───────────────────────────────────────────────────────────────────────────────┐${rst}",
+  "${grn}┌──────────────────────────────────────────────────────────────────────────────┐${rst}",
   "${grn}│${rst}   ${bold}${ylw}███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗${rst}   ${grn}│${rst}",
   "${grn}│${rst}   ${bold}${ylw}██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║${rst}   ${grn}│${rst}",
   "${grn}│${rst}   ${bold}${ylw}█████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║${rst}   ${grn}│${rst}",
@@ -74,28 +74,41 @@ const DESKTOP_BANNER = [
   "${grn}│${rst}   ${bold}${ylw}╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝${rst}   ${grn}│${rst}",
   "${grn}│${rst}                                                                               ${grn}│${rst}",
   "${grn}│${rst}                      ${bold}${g(250)}██╗  ██╗ ██████╗ ███████╗ ████████╗${rst}                      ${grn}│${rst}",
-  "${grn}│${rst}                      ${bold}${g(250)}██║  ██║ ██╔══██╗ ██╔════╝ ╚══██╔══╝${rst}                     ${grn}│${rst}",
-  "${grn}│${rst}                      ${bold}${g(250)}███████║ ██║  ██║ ███████╗    ██║${rst}                        ${grn}│${rst}",
-  "${grn}│${rst}                      ${bold}${g(250)}██╔══██║ ██║  ██║ ╚════██║    ██║${rst}                        ${grn}│${rst}",
-  "${grn}│${rst}                      ${bold}${g(250)}██║  ██║ ╚█████╔╝ ███████║    ██║${rst}                        ${grn}│${rst}",
-  "${grn}│${rst}                      ${bold}${g(250)}╚═╝  ╚═╝  ╚════╝  ╚══════╝    ╚═╝${rst}                        ${grn}│${rst}",
+  "${grn}│${rst}                      ${bold}${g(250)}██║  ██║ ██╔══██╗ ██╔════╝ ╚══██╔══╝${rst}                    ${grn}│${rst}",
+  "${grn}│${rst}                      ${bold}${g(250)}███████║ ██║  ██║ ███████╗    ██║${rst}                       ${grn}│${rst}",
+  "${grn}│${rst}                      ${bold}${g(250)}██╔══██║ ██║  ██║ ╚════██║    ██║${rst}                       ${grn}│${rst}",
+  "${grn}│${rst}                      ${bold}${g(250)}██║  ██║ ╚█████╔╝ ███████║    ██║${rst}                       ${grn}│${rst}",
+  "${grn}│${rst}                      ${bold}${g(250)}╚═╝  ╚═╝  ╚════╝  ╚══════╝    ╚═╝${rst}                       ${grn}│${rst}",
   "${grn}│${rst}                                                                               ${grn}│${rst}",
   "${grn}│${rst}    ${dim}${g(245)}Isolated Sandbox Terminal${rst}                                                  ${grn}│${rst}",
   "${grn}│${rst}    ${dim}${g(245)}Type your commands after the ${rst}${ylw}$${rst}${dim}${g(245)} prompt${rst}                                      ${grn}│${rst}",
-  "${grn}└───────────────────────────────────────────────────────────────────────────────┘${rst}",
+  "${grn}└──────────────────────────────────────────────────────────────────────────────┘${rst}",
+  "",
+  "${ylw}$ ${rst}",
+].join("\r\n");
+
+const MEDIUM_BANNER = [
+  "${grn}╔══════════════════════════════════════════╗${rst}",
+  "${grn}║${rst}                                          ${grn}║${rst}",
+  "${grn}║${rst}       ${bold}${ylw}ELMODMEN HOST v6${rst}                ${grn}║${rst}",
+  "${grn}║${rst}                                          ${grn}║${rst}",
+  "${grn}║${rst}    ${dim}${g(245)}Isolated Sandbox Terminal${rst}          ${grn}║${rst}",
+  "${grn}║${rst}  ${dim}${g(245)}Type commands after ${rst}${ylw}$${rst}${dim}${g(245)} prompt${rst}          ${grn}║${rst}",
+  "${grn}║${rst}                                          ${grn}║${rst}",
+  "${grn}╚══════════════════════════════════════════╝${rst}",
   "",
   "${ylw}$ ${rst}",
 ].join("\r\n");
 
 const MOBILE_BANNER = [
-  "${grn}╔════════════════════════════════════════╗${rst}",
-  "${grn}║${rst}                                        ${grn}║${rst}",
-  "${grn}║${rst}            ${bold}${ylw}ELMODMEN HOST v6${rst}            ${grn}║${rst}",
-  "${grn}║${rst}                                        ${grn}║${rst}",
-  "${grn}║${rst}        ${dim}${g(245)}Isolated Sandbox Terminal${rst}       ${grn}║${rst}",
-  "${grn}║${rst}    ${dim}${g(245)}Type commands after the ${rst}${ylw}$${rst}${dim}${g(245)} prompt${rst}    ${grn}║${rst}",
-  "${grn}║${rst}                                        ${grn}║${rst}",
-  "${grn}╚════════════════════════════════════════╝${rst}",
+  "${grn}╔════════════════════════════════╗${rst}",
+  "${grn}║${rst}                                ${grn}║${rst}",
+  "${grn}║${rst}   ${bold}${ylw}ELMODMEN HOST${rst}               ${grn}║${rst}",
+  "${grn}║${rst}                                ${grn}║${rst}",
+  "${grn}║${rst}  ${dim}${g(245)}Sandbox Terminal${rst}              ${grn}║${rst}",
+  "${grn}║${rst}  ${dim}${g(245)}Type ${rst}${ylw}$${rst}${dim}${g(245)} then commands${rst}         ${grn}║${rst}",
+  "${grn}║${rst}                                ${grn}║${rst}",
+  "${grn}╚════════════════════════════════╝${rst}",
   "",
   "${ylw}$ ${rst}",
 ].join("\r\n");
@@ -214,7 +227,14 @@ export default function TerminalPage() {
     const grn = g(46);
     const ylw = g(226);
     const cols = term.cols || 80;
-    const raw = cols < 45 ? MOBILE_BANNER : DESKTOP_BANNER;
+    let raw;
+    if (cols >= 78) {
+      raw = DESKTOP_BANNER;
+    } else if (cols >= 44) {
+      raw = MEDIUM_BANNER;
+    } else {
+      raw = MOBILE_BANNER;
+    }
     const banner = raw
       .replace(/\$\{grn\}/g, grn)
       .replace(/\$\{rst\}/g, rst)
@@ -511,6 +531,7 @@ export default function TerminalPage() {
     if (res.resizeObserver) res.resizeObserver.disconnect();
     if (res.term) res.term.dispose();
     delete resources.current[activeTabId];
+    welcomeShown.current[activeTabId] = false;
     setStatuses((prev) => ({ ...prev, [activeTabId]: "connecting" }));
     setTimeout(() => {
       const el = containerRefs.current[activeTabId];
@@ -586,14 +607,19 @@ export default function TerminalPage() {
         .preset-btn { padding: 4px 10px; border-radius: 8px; font-size: 10px; font-family: monospace; border: 1px solid; transition: all 0.12s; cursor: pointer; user-select: none; }
         .preset-btn:hover { opacity: 0.8; transform: translateY(-1px); }
         .preset-btn:active { transform: scale(0.95); }
-        @media (max-width: 767px) {
-          .terminal-container .xterm { padding: 1px; }
-          .xterm { font-size: 11px !important; }
-          .xterm-rows > div { font-size: 11px !important; line-height: 1.15 !important; }
+        @media (max-width: 820px) {
+          .terminal-container .xterm { padding: 2px; }
+          .xterm { font-size: 12px !important; }
+          .xterm-rows > div { font-size: 12px !important; line-height: 1.2 !important; }
           .xterm-viewport { scrollbar-width: thin; }
           .xterm-screen { padding: 0; }
         }
-        @media (max-width: 480px) {
+        @media (max-width: 600px) {
+          .terminal-container .xterm { padding: 1px; }
+          .xterm { font-size: 11px !important; }
+          .xterm-rows > div { font-size: 11px !important; line-height: 1.15 !important; }
+        }
+        @media (max-width: 420px) {
           .terminal-container .xterm { padding: 0; }
           .xterm { font-size: 10px !important; }
           .xterm-rows > div { font-size: 10px !important; line-height: 1.1 !important; }
