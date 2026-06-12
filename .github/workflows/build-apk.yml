@@ -16,22 +16,8 @@ jobs:
         with: { distribution: temurin, java-version: 17 }
       - uses: android-actions/setup-android@v3
 
-      - name: Debug SDK
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls -la $ANDROID_HOME/ 2>/dev/null
-          ls -la $ANDROID_HOME/platforms/ 2>/dev/null || echo "No platforms"
-          ls -la $ANDROID_HOME/build-tools/ 2>/dev/null || echo "No build-tools"
-          which java
-          java -version 2>&1
-          echo "JAVA_HOME=$JAVA_HOME"
-
-      - name: Accept licenses + install SDK
-        run: |
-          yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses 2>/dev/null || true
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" 2>&1
+      - name: Install SDK
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>&1 && $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" 2>&1
 
       - name: Build frontend
         working-directory: frontend
@@ -46,7 +32,14 @@ jobs:
         working-directory: frontend/android
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle.log
+
+      - name: Upload log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-error-log
+          path: /tmp/gradle.log
 
       - name: Upload APK
         if: success()
