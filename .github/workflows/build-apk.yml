@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -17,41 +20,33 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          distribution: microsoft
+          distribution: temurin
           java-version: 17
 
       - uses: android-actions/setup-android@v3
 
-      - name: Build frontend
-        run: npm --prefix frontend install && npm --prefix frontend run build
+      - name: Accept licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      - name: Install SDK 35
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Install deps + build
+        run: npm install && npm run build
         env:
           VITE_API_URL: https://server-hub-v5-wrpt.onrender.com
 
       - name: Sync Capacitor
-        working-directory: frontend
         run: npx cap sync android
 
-      - name: Build APK with Gradle
+      - name: Build APK
         working-directory: frontend/android
-        continue-on-error: true
         run: |
           chmod +x gradlew
-          echo "=== ENV ==="
           echo "JAVA_HOME=$JAVA_HOME"
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          java -version 2>&1
-          echo "=== SDK ==="
-          ls $ANDROID_HOME/platforms/ 2>/dev/null
-          ls $ANDROID_HOME/build-tools/ 2>/dev/null
-          echo "=== GRADLE ==="
-          ./gradlew assembleDebug --no-daemon 2>&1 | tee /tmp/gradle.log
-
-      - name: Upload Gradle logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gradle-logs
-          path: /tmp/gradle.log
+          ls $ANDROID_HOME/platforms/
+          ./gradlew assembleDebug --no-daemon --info 2>&1
 
       - name: Upload APK
         if: success()
