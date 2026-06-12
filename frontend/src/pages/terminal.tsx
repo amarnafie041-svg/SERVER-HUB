@@ -64,39 +64,13 @@ const VIRTUAL_KEYS = [
   { label: "▶", value: "\x1b[C", color: "#8b5cf6" },
 ];
 
-const MOBILE_BANNER = [
-  "${grn}╔═══════════════════════════╗${rst}",
-  "${grn}║${rst}  ${bold}${ylw}ELMODMEN  SERVER  HUB${rst}  ${grn}║${rst}",
-  "${grn}║${rst}  ${bold}${ylw}v6 — Terminal Ready${rst}    ${grn}║${rst}",
-  "${grn}║${rst}  ${dim}${g(245)}Type your commands below${rst} ${grn}║${rst}",
-  "${grn}╚═══════════════════════════╝${rst}",
+const SIMPLE_BANNER = [
+  "${grn}┌──────────────────────────────────────────┐${rst}",
+  "${grn}│${rst}  ${bold}${ylw}ELMODMEN SERVER HUB v6${rst}  ${dim}${g(245)}— Isolated Terminal${rst}  ${grn}│${rst}",
+  "${grn}│${rst}  ${dim}${g(245)}Type commands after the ${rst}${ylw}$${rst}${dim}${g(245)} prompt${rst}           ${grn}│${rst}",
+  "${grn}└──────────────────────────────────────────┘${rst}",
   "",
-  "${dim}┌──(${rst}${ylw}runner${rst}${dim}㉿${rst}${ylw}serverhub${rst}${dim})-[${rst}${cyn}~${rst}${dim}]${rst}",
-  "${dim}└─${rst}$ ",
-].join("\r\n");
-
-const ELMODMEN_BANNER = [
-  "${grn}╔══════════════════════════════════════════════════════════════╗${rst}",
-  "${grn}║${rst}  ${bold}${ylw}███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗${rst}  ${grn}║${rst}",
-  "${grn}║${rst}  ${bold}${ylw}██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║${rst}  ${grn}║${rst}",
-  "${grn}║${rst}  ${bold}${ylw}█████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║${rst}  ${grn}║${rst}",
-  "${grn}║${rst}  ${bold}${ylw}██╔══╝  ██║     ██║╚██╔╝██║██║   ██║██║  ██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║${rst}  ${grn}║${rst}",
-  "${grn}║${rst}  ${bold}${ylw}███████╗███████╗██║ ╚═╝ ██║╚██████╔╝██████╔╝██║ ╚═╝ ██║███████╗██║ ╚████║${rst}  ${grn}║${rst}",
-  "${grn}║${rst}  ${bold}${ylw}╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝${rst}  ${grn}║${rst}",
-  "${grn}║${rst}                                                                                    ${grn}║${rst}",
-  "${grn}║${rst}              ${bold}${g(250)}██╗  ██╗██╗   ██╗██████╗ ███████╗██████╗ ██╗  ██╗${rst}              ${grn}║${rst}",
-  "${grn}║${rst}              ${bold}${g(250)}██║  ██║██║   ██║██╔══██╗██╔════╝██╔══██╗██║  ██║${rst}              ${grn}║${rst}",
-  "${grn}║${rst}              ${bold}${g(250)}███████║██║   ██║██████╔╝█████╗  ██████╔╝███████║${rst}              ${grn}║${rst}",
-  "${grn}║${rst}              ${bold}${g(250)}██╔══██║██║   ██║██╔══██╗██╔══╝  ██╔══██╗██╔══██║${rst}              ${grn}║${rst}",
-  "${grn}║${rst}              ${bold}${g(250)}██║  ██║╚██████╔╝██████╔╝███████╗██║  ██║██║  ██║${rst}              ${grn}║${rst}",
-  "${grn}║${rst}              ${bold}${g(250)}╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝${rst}              ${grn}║${rst}",
-  "${grn}║${rst}                                                                                    ${grn}║${rst}",
-  "${grn}║${rst}    ${dim}${g(245)}SERVER HUB v6 — Isolated Sandbox Terminal${rst}    ${grn}║${rst}",
-  "${grn}║${rst}    ${dim}${g(245)}Type your commands below after the prompt sign ${rst}${ylw}$${rst}${dim}${g(245)}                          ${rst}    ${grn}║${rst}",
-  "${grn}╚══════════════════════════════════════════════════════════════╝${rst}",
-  "",
-  "${dim}┌──(${rst}${ylw}runner${rst}${dim}㉿${rst}${ylw}serverhub${rst}${dim})-[${rst}${cyn}~${rst}${dim}]${rst}",
-  "${dim}└─${rst}$ ",
+  "${ylw}$ ${rst}",
 ].join("\r\n");
 
 export default function TerminalPage() {
@@ -213,8 +187,7 @@ export default function TerminalPage() {
     const grn = g(46);
     const ylw = g(226);
     const cyn = g(87);
-    const cols = term.cols || 80;
-    const banner = (cols < 50 ? MOBILE_BANNER : ELMODMEN_BANNER)
+    const banner = SIMPLE_BANNER
       .replace(/\$\{grn\}/g, grn)
       .replace(/\$\{rst\}/g, rst)
       .replace(/\$\{bold\}/g, bold)
@@ -365,6 +338,19 @@ export default function TerminalPage() {
       welcomeShown.current[tabId] = true;
       writeElmodmenBanner(term);
     }
+    term.onSelectionChange(() => {
+      const sel = term.getSelection();
+      if (sel) navigator.clipboard.writeText(sel).catch(() => {});
+    });
+
+    term.element?.addEventListener("contextmenu", (e: MouseEvent) => {
+      e.preventDefault();
+      navigator.clipboard.readText().then((text) => {
+        const { ws } = getRes(tabId);
+        if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "input", data: text }));
+      }).catch(() => {});
+    });
+
     term.attachCustomKeyEventHandler((e) => {
       if (e.type === "keydown") {
         if (e.ctrlKey && e.shiftKey && (e.key === "c" || e.key === "C")) {
@@ -372,7 +358,7 @@ export default function TerminalPage() {
           if (sel) navigator.clipboard.writeText(sel).catch(() => {});
           return false;
         }
-        if (e.ctrlKey && (e.key === "v" || e.key === "V")) {
+        if (e.ctrlKey && e.shiftKey && (e.key === "v" || e.key === "V")) {
           navigator.clipboard.readText().then((text) => {
             const { ws } = getRes(tabId);
             if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "input", data: text }));
