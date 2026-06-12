@@ -206,7 +206,7 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
       name: "xterm-256color",
       cols: 80,
       rows: 24,
-      cwd: homeDir,
+      cwd: workDir,
       env: {
         ...process.env,
         TERM: "xterm-256color",

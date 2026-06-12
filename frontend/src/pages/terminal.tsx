@@ -533,10 +533,10 @@ export default function TerminalPage() {
   return (
     <>
       <style>{`
-        .terminal-container .xterm { padding: 2px; }
-        .terminal-container .xterm-viewport { scrollbar-width: thin; scrollbar-color: rgba(139,92,246,0.3) transparent; }
+        .terminal-container .xterm { padding: 3px; }
+        .terminal-container .xterm-viewport { scrollbar-width: thin; scrollbar-color: rgba(139,92,246,0.25) transparent; }
         .terminal-container .xterm-viewport::-webkit-scrollbar { width: 4px; }
-        .terminal-container .xterm-viewport::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.3); border-radius: 3px; }
+        .terminal-container .xterm-viewport::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.25); border-radius: 3px; }
         .terminal-container .xterm-viewport::-webkit-scrollbar-track { background: transparent; }
         .terminal-container .xterm-rows { unicode-bidi: plaintext; direction: auto; }
         .terminal-container .xterm-rows > div { direction: auto; unicode-bidi: plaintext; }
@@ -544,111 +544,115 @@ export default function TerminalPage() {
         .terminal-container .xterm-rows span { unicode-bidi: plaintext; direction: auto; white-space: pre; }
         .terminal-container .xterm-rows .xterm-cursor { unicode-bidi: embed; }
         .terminal-container .xterm-rows .xterm-chars { unicode-bidi: plaintext; direction: auto; }
-        .terminal-container .xterm-rows .xterm-char-measure-element { font-family: "Noto Naskh Arabic", "Amiri", "JetBrains Mono", monospace; }
-        .terminal-container .xterm-rows .xterm-char-measure-element span { font-family: "Noto Naskh Arabic", "Amiri", "JetBrains Mono", monospace; }
+        .terminal-container .xterm-rows .xterm-char-measure-element { font-family: "Noto Naskh Arabic", "Amiri", "JetBrains Mono", monospace !important; }
+        .terminal-container .xterm-rows .xterm-char-measure-element span { font-family: "Noto Naskh Arabic", "Amiri", "JetBrains Mono", monospace !important; }
         .run-dropdown-enter { animation: dropFadeIn 0.15s ease-out; }
         @keyframes dropFadeIn { from { opacity: 0; transform: translateY(-4px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        .virt-kb-btn { min-width: 44px; min-height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid rgba(139,92,246,0.2); background: rgba(20,10,36,0.8); color: #a1a1aa; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; user-select: none; }
-        .virt-kb-btn:active { transform: scale(0.92); background: rgba(139,92,246,0.2); color: white; }
-        .quick-cmd-btn { padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; white-space: nowrap; user-select: none; }
+        .virt-kb-btn { min-width: 44px; min-height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid rgba(139,92,246,0.2); background: rgba(20,10,36,0.8); color: #a1a1aa; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.12s; user-select: none; }
+        .virt-kb-btn:active { transform: scale(0.92); background: rgba(139,92,246,0.25); color: white; }
+        .quick-cmd-btn { padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.12s; border: 1px solid transparent; white-space: nowrap; user-select: none; }
+        .quick-cmd-btn:hover { background: rgba(255,255,255,0.04); }
         .quick-cmd-btn:active { transform: scale(0.95); }
+        .tab-btn { border-radius: 8px; cursor: pointer; transition: all 0.15s; user-select: none; }
+        .tab-btn:hover { background: rgba(255,255,255,0.04); }
+        .preset-btn { padding: 4px 10px; border-radius: 8px; font-size: 10px; font-family: monospace; border: 1px solid; transition: all 0.12s; cursor: pointer; user-select: none; }
+        .preset-btn:hover { opacity: 0.8; transform: translateY(-1px); }
+        .preset-btn:active { transform: scale(0.95); }
         @media (max-width: 767px) {
           .terminal-container .xterm { padding: 1px; }
-          .xterm { font-size: 10px !important; }
-          .xterm-rows > div { font-size: 10px !important; line-height: 1.0 !important; }
+          .xterm { font-size: 11px !important; }
+          .xterm-rows > div { font-size: 11px !important; line-height: 1.15 !important; }
           .xterm-viewport { scrollbar-width: thin; }
           .xterm-screen { padding: 0; }
         }
         @media (max-width: 480px) {
           .terminal-container .xterm { padding: 0; }
-          .xterm { font-size: 9px !important; }
-          .xterm-rows > div { font-size: 9px !important; line-height: 1.0 !important; }
+          .xterm { font-size: 10px !important; }
+          .xterm-rows > div { font-size: 10px !important; line-height: 1.1 !important; }
         }
       `}</style>
       <div className={`flex flex-col overflow-hidden ${fullscreen ? "fixed inset-0 z-50" : "h-full"}`} style={{ background: terminalBg }}>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-0 sm:gap-1 px-1 sm:px-2 py-1 border-b shrink-0"
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-0 sm:gap-1 px-1 sm:px-2 py-0.5 border-b shrink-0"
           style={{ background: headerBg, borderColor: "var(--border)" }}
           onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={stopDrag} onMouseLeave={stopDrag}>
 
           <div ref={tabsScrollRef}
-            className="flex items-center gap-1 flex-1 overflow-x-auto min-w-0 scrollbar-none cursor-grab active:cursor-grabbing py-1 sm:py-0"
+            className="flex items-center gap-0.5 flex-1 overflow-x-auto min-w-0 scrollbar-none cursor-grab active:cursor-grabbing py-0.5"
             style={{ scrollBehavior: "smooth" }}>
             {tabs.map((tab) => {
               const status = statuses[tab.id];
               const isActive = tab.id === activeTabId;
               return (
                 <div key={tab.id} onClick={() => setActiveTabId(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer transition-all text-xs font-mono whitespace-nowrap group shrink-0 select-none ${
-                    isActive ? "bg-primary/20 text-foreground border border-accent/30" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5 border border-transparent"
+                  className={`tab-btn flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono whitespace-nowrap group shrink-0 select-none border ${
+                    isActive ? "bg-primary/15 text-foreground border-accent/25 shadow-[0_0_10px_rgba(139,92,246,0.08)]" : "text-zinc-500 hover:text-zinc-300 border-transparent"
                   }`}>
                   <StatusDot status={status} />
-                  {tab.isolated && <span title="Isolated"><ShieldCheck className="w-3 h-3 text-green-400" /></span>}
-                  <TerminalSquare className={`w-4 h-4 ${isActive ? "text-accent" : "text-zinc-600"}`} />
-                  <span>{tab.name}</span>
+                  {tab.isolated && <ShieldCheck className="w-3 h-3 text-green-400/70" />}
+                  <TerminalSquare className={`w-3.5 h-3.5 ${isActive ? "text-accent" : "text-zinc-600"}`} />
+                  <span className="text-[11px]">{tab.name}</span>
                   <button onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
-                    className="ml-0.5 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all p-0.5 rounded"><X className="w-3.5 h-3.5" /></button>
+                    className="ml-0.5 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all p-0.5 rounded"><X className="w-3 h-3" /></button>
                 </div>
               );
             })}
             <Button variant="ghost" size="sm" onClick={() => createTab()}
-              className="h-8 px-2 shrink-0 gap-1 text-xs font-bold text-accent hover:text-accent/80" title="New Terminal">
-              <Plus className="w-4 h-4" /> <span className="hidden sm:inline">New</span>
+              className="h-7 px-1.5 shrink-0 gap-1 text-[11px] font-bold text-accent hover:text-accent/80" title="New Terminal">
+              <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">New</span>
             </Button>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0 flex-wrap">
+          <div className="flex items-center gap-0.5 shrink-0 flex-wrap">
             {activeTabId && (
-              <div className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md border shrink-0"
-                style={{ background: headerBg, borderColor: "var(--border)" }}>
+              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md shrink-0 text-zinc-600 font-mono">
                 <StatusDot status={activeStatus} />
-                <span className="text-zinc-500 font-mono hidden sm:inline">{statusLabel(activeStatus)}</span>
-              </div>
+                {statusLabel(activeStatus)}
+              </span>
             )}
-
-            <div className="flex items-center gap-1 pl-1 border-l" style={{ borderColor: "var(--border)" }}>
-              <Button variant="ghost" size="sm" onClick={() => { setRunCmd(""); setShowRunDialog(true); }} title="Run Command" className="h-9 w-9 p-0 text-green-400 hover:text-green-300"><Play className="w-4 h-4" /></Button>
-              <Button variant="ghost" size="sm" onClick={restartActive} title="Restart Terminal" className="h-9 w-9 p-0 text-yellow-400 hover:text-yellow-300"><RefreshCcw className="w-4 h-4" /></Button>
-              <Button variant="ghost" size="sm" onClick={stopActive} title="Stop (Ctrl+C)" className="h-9 w-9 p-0 text-red-400 hover:text-red-300"><Square className="w-4 h-4" /></Button>
+            <div className="flex items-center gap-0.5">
+              <button onClick={() => { setRunCmd(""); setShowRunDialog(true); }} title="Run Command" className="h-8 w-8 flex items-center justify-center rounded-lg text-green-400/70 hover:text-green-300 hover:bg-white/5 transition-all"><Play className="w-3.5 h-3.5" /></button>
+              <button onClick={restartActive} title="Restart Terminal" className="h-8 w-8 flex items-center justify-center rounded-lg text-yellow-400/70 hover:text-yellow-300 hover:bg-white/5 transition-all"><RefreshCcw className="w-3.5 h-3.5" /></button>
+              <button onClick={stopActive} title="Stop (Ctrl+C)" className="h-8 w-8 flex items-center justify-center rounded-lg text-red-400/70 hover:text-red-300 hover:bg-white/5 transition-all"><Square className="w-3.5 h-3.5" /></button>
             </div>
-            <div className="flex items-center gap-1 pl-1 border-l" style={{ borderColor: "var(--border)" }}>
-              <Button variant="ghost" size="sm" onClick={() => { setInstallCmd(""); setShowInstallDialog(true); }} title="Install Packages" className="h-9 w-9 p-0 text-cyan-400 hover:text-cyan-300"><Package className="w-4 h-4" /></Button>
-              <Button variant="ghost" size="sm" onClick={clearActive} title="Clear" className="h-9 w-9 p-0"><Trash2 className="w-4 h-4" /></Button>
-              <Button variant="ghost" size="sm" onClick={resetActive} title="Reset" className="h-9 w-9 p-0"><RotateCcw className="w-4 h-4" /></Button>
+            <div className="flex items-center gap-0.5 pl-1.5 ml-1 border-l" style={{ borderColor: "var(--border)" }}>
+              <button onClick={() => { setInstallCmd(""); setShowInstallDialog(true); }} title="Install Packages" className="h-8 w-8 flex items-center justify-center rounded-lg text-cyan-400/70 hover:text-cyan-300 hover:bg-white/5 transition-all"><Package className="w-3.5 h-3.5" /></button>
+              <button onClick={clearActive} title="Clear" className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button onClick={resetActive} title="Reset" className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-all"><RotateCcw className="w-3.5 h-3.5" /></button>
             </div>
             <div className="relative">
-              <Button variant="ghost" size="sm" onClick={() => setShowQuickCmds(!showQuickCmds)}
-                title="Quick Commands" className="h-8 px-2 text-xs text-cyan-400 hover:text-cyan-300">
-                <TerminalIcon className="w-4 h-4" />
-              </Button>
+              <button onClick={() => setShowQuickCmds(!showQuickCmds)}
+                title="Quick Commands" className="h-8 w-8 flex items-center justify-center rounded-lg text-cyan-400/70 hover:text-cyan-300 hover:bg-white/5 transition-all">
+                <TerminalIcon className="w-3.5 h-3.5" />
+              </button>
               {showQuickCmds && (
-                <div className="absolute left-0 top-full mt-1 z-50 rounded-xl border shadow-2xl p-2 run-dropdown-enter min-w-[220px]"
+                <div className="absolute left-0 top-full mt-1 z-50 rounded-xl border shadow-2xl p-2 run-dropdown-enter min-w-[200px]"
                   style={{ background: headerBg, borderColor: "var(--border)" }}
                   onMouseLeave={() => setShowQuickCmds(false)}>
-                  <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-1">Quick Commands</div>
-                  <div className="space-y-1">
+                  <div className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 px-1">Quick Commands</div>
+                  <div className="space-y-0.5">
                     {QUICK_CMDS.map((qc) => (
                       <button key={qc.label} onClick={() => handleQuickCmd(qc.cmd)}
-                        className="quick-cmd-btn w-full flex items-center gap-2 text-left text-zinc-300 hover:text-white hover:bg-white/5"
-                        style={{ borderColor: `${qc.color}30` }}>
-                        <qc.icon className="w-3.5 h-3.5 shrink-0" style={{ color: qc.color }} />
-                        <span className="font-mono text-[11px] truncate">{qc.label}</span>
+                        className="quick-cmd-btn w-full flex items-center gap-2 text-left text-zinc-400 hover:text-white"
+                        style={{ borderColor: `${qc.color}20` }}>
+                        <qc.icon className="w-3 h-3 shrink-0" style={{ color: qc.color }} />
+                        <span className="font-mono text-[10px] truncate">{qc.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-1 pl-1 border-l" style={{ borderColor: "var(--border)" }}>
+            <div className="flex items-center gap-0.5 pl-1.5 ml-1 border-l" style={{ borderColor: "var(--border)" }}>
               {!isMobile && (
                 <>
-                  <Button variant="ghost" size="sm" onClick={() => setFontSize((s) => Math.max(10, s - 1))} title="Decrease font" className="h-9 w-9 p-0"><ZoomOut className="w-4 h-4" /></Button>
-                  <span className="text-xs font-mono text-zinc-500 w-5 text-center">{fontSize}</span>
-                  <Button variant="ghost" size="sm" onClick={() => setFontSize((s) => Math.min(28, s + 1))} title="Increase font" className="h-9 w-9 p-0"><ZoomIn className="w-4 h-4" /></Button>
+                  <button onClick={() => setFontSize((s) => Math.max(10, s - 1))} title="Decrease font" className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-all"><ZoomOut className="w-3.5 h-3.5" /></button>
+                  <span className="text-[10px] font-mono text-zinc-600 w-4 text-center">{fontSize}</span>
+                  <button onClick={() => setFontSize((s) => Math.min(28, s + 1))} title="Increase font" className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-all"><ZoomIn className="w-3.5 h-3.5" /></button>
                 </>
               )}
-              <Button variant="ghost" size="sm" onClick={() => setFullscreen(!fullscreen)} title="Fullscreen" className="h-9 w-9 p-0">
-                {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-              </Button>
+              <button onClick={() => setFullscreen(!fullscreen)} title="Fullscreen" className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-all">
+                {fullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              </button>
             </div>
           </div>
         </div>
@@ -678,56 +682,46 @@ export default function TerminalPage() {
 
         {isMobile && (
           <div className="border-t shrink-0" style={{ background: headerBg, borderColor: "var(--border)" }}>
-            <div className="flex items-center justify-between px-2 py-1 border-b" style={{ borderColor: "var(--border)" }}>
+            <div className="flex items-center justify-between px-2 py-0.5 border-b" style={{ borderColor: "var(--border)" }}>
               <button onClick={() => setShowKb(!showKb)}
-                className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-white transition-colors py-1">
-                <Keyboard className="w-3.5 h-3.5" />
-                {showKb ? "Hide KB" : "Show KB"}
+                className="flex items-center gap-1 text-[9px] text-zinc-500 hover:text-white transition-colors py-1">
+                <Keyboard className="w-3 h-3" />
+                {showKb ? "Hide" : "Keys"}
               </button>
-              <span className="text-[9px] text-zinc-700 font-mono">{tabs.length} session(s)</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { setRunCmd(""); setShowRunDialog(true); }} className="text-[9px] text-green-400/70 hover:text-green-300 px-1.5 py-0.5 rounded transition-colors">Run</button>
+                <button onClick={restartActive} className="text-[9px] text-yellow-400/70 hover:text-yellow-300 px-1.5 py-0.5 rounded transition-colors">Restart</button>
+                <button onClick={stopActive} className="text-[9px] text-red-400/70 hover:text-red-300 px-1.5 py-0.5 rounded transition-colors">Stop</button>
+                <span className="text-[8px] text-zinc-700 font-mono">{tabs.length}</span>
+              </div>
             </div>
             {showKb && (
-              <div className="p-2 overflow-x-auto">
-                <div className="flex gap-1.5 mb-2 overflow-x-auto scrollbar-none pb-1">
-                  {QUICK_CMDS.map((qc) => (
+              <div className="p-1.5 overflow-x-auto">
+                <div className="flex gap-1 mb-1.5 overflow-x-auto scrollbar-none pb-0.5">
+                  {QUICK_CMDS.slice(0, 8).map((qc) => (
                     <button key={qc.label} onClick={() => handleQuickCmd(qc.cmd + "\r")}
-                      className="quick-cmd-btn flex items-center gap-1 text-zinc-400 hover:text-white hover:bg-white/5"
-                      style={{ borderColor: `${qc.color}30` }}>
-                      <qc.icon className="w-3 h-3" style={{ color: qc.color }} />
-                      <span className="text-[10px] font-mono">{qc.label}</span>
+                      className="quick-cmd-btn flex items-center gap-1 text-zinc-500 hover:text-white whitespace-nowrap"
+                      style={{ borderColor: `${qc.color}20` }}>
+                      <qc.icon className="w-2.5 h-2.5" style={{ color: qc.color }} />
+                      <span className="text-[9px] font-mono">{qc.label}</span>
                     </button>
                   ))}
                 </div>
-                <div className="flex gap-1.5 flex-wrap justify-center">
+                <div className="flex gap-1 flex-wrap justify-center">
                   {VIRTUAL_KEYS.map((key) => (
                     <button key={key.label} onClick={() => {
                       const { ws } = getRes(activeTabId!);
                       if (ws?.readyState === WebSocket.OPEN) {
                         let toSend = key.value;
-                        if (key.isCtrl) {
-                          toSend = "\x03";
-                        }
+                        if (key.isCtrl) toSend = "\x03";
                         ws.send(JSON.stringify({ type: "input", data: toSend }));
                       }
                     }}
-                      className={`virt-kb-btn ${key.isCtrl ? "min-w-[52px]" : ""}`}>
+                      className={`virt-kb-btn ${key.isCtrl ? "min-w-[52px]" : ""}`}
+                      style={{ minWidth: key.label.length > 2 ? "52px" : "44px", minHeight: "36px" }}>
                       {key.label}
                     </button>
                   ))}
-                </div>
-                <div className="flex gap-1.5 mt-2 justify-center flex-wrap">
-                  <Button variant="ghost" size="sm" onClick={() => { setRunCmd(""); setShowRunDialog(true); }} className="h-8 px-3 text-[10px] text-green-400 hover:bg-white/5"><Play className="w-3 h-3 mr-1" />Run</Button>
-                  <Button variant="ghost" size="sm" onClick={restartActive} className="h-8 px-3 text-[10px] text-yellow-400 hover:bg-white/5"><RefreshCcw className="w-3 h-3 mr-1" />Restart</Button>
-                  <Button variant="ghost" size="sm" onClick={stopActive} className="h-8 px-3 text-[10px] text-red-400 hover:bg-white/5"><Square className="w-3 h-3 mr-1" />Stop</Button>
-                  <Button variant="ghost" size="sm" onClick={() => { setInstallCmd(""); setShowInstallDialog(true); }} className="h-8 px-3 text-[10px] text-cyan-400 hover:bg-white/5"><Package className="w-3 h-3 mr-1" />Install</Button>
-                  <Button variant="ghost" size="sm" onClick={clearActive} className="h-8 px-3 text-[10px] text-zinc-400 hover:bg-white/5">Clear</Button>
-                  <Button variant="ghost" size="sm" onClick={resetActive} className="h-8 px-3 text-[10px] text-zinc-400 hover:bg-white/5">Reset</Button>
-                  <Button variant="ghost" size="sm" onClick={() => setFontSize((s) => Math.max(10, s - 1))} className="h-8 px-2 text-[10px] text-zinc-400 hover:bg-white/5">A-</Button>
-                  <span className="text-[10px] font-mono text-zinc-600 flex items-center">{fontSize}</span>
-                  <Button variant="ghost" size="sm" onClick={() => setFontSize((s) => Math.min(28, s + 1))} className="h-8 px-2 text-[10px] text-zinc-400 hover:bg-white/5">A+</Button>
-                  <Button variant="ghost" size="sm" onClick={() => setFullscreen(!fullscreen)} className="h-8 px-2 text-[10px] text-zinc-400 hover:bg-white/5">
-                    {fullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                  </Button>
                 </div>
               </div>
             )}
@@ -735,14 +729,14 @@ export default function TerminalPage() {
         )}
 
         {activeTabId && tabs.length > 0 && !isMobile && (
-          <div className="flex items-center justify-between px-4 py-1.5 border-t shrink-0 text-xs font-mono"
+          <div className="flex items-center justify-between px-3 py-1 border-t shrink-0 text-[10px] font-mono"
             style={{ background: headerBg, borderColor: "var(--border)" }}>
             <div className="flex items-center gap-2 text-zinc-600">
               <StatusDot status={activeStatus} />
               <span>{statusLabel(activeStatus)}</span>
               {activeTab?.isolated && (
-                <span className="flex items-center gap-1 text-green-500 ml-2">
-                  <ShieldCheck className="w-3 h-3" /> Isolated
+                <span className="flex items-center gap-1 text-green-500/70 ml-2">
+                  <ShieldCheck className="w-2.5 h-2.5" /> Isolated
                 </span>
               )}
             </div>
@@ -751,28 +745,30 @@ export default function TerminalPage() {
         )}
 
         {showRunDialog && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setShowRunDialog(false)}>
-            <div className="rounded-2xl border w-full max-w-lg p-5 shadow-2xl" style={{ background: "var(--card)", borderColor: "var(--border)" }} onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 animate-fadeIn" onClick={() => setShowRunDialog(false)}>
+            <div className="rounded-2xl border w-full max-w-lg p-4 md:p-5 shadow-2xl animate-scaleIn" style={{ background: "var(--card)", borderColor: "var(--border)" }} onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2"><Play className="w-4 h-4 text-green-400" /> Run Command</h3>
-                <button onClick={() => setShowRunDialog(false)} className="text-zinc-500 hover:text-white"><X className="w-4 h-4" /></button>
+                <button onClick={() => setShowRunDialog(false)} className="text-zinc-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/5"><X className="w-3.5 h-3.5" /></button>
               </div>
               <div className="flex gap-2 mb-3">
                 <input value={runCmd} onChange={(e) => setRunCmd(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleRunCmd(); if (e.key === "Escape") setShowRunDialog(false); }}
-                  placeholder="Type your command here..."
-                  className="flex-1 h-10 px-3 text-xs font-mono rounded-lg border outline-none"
-                  style={{ background: "var(--background)", borderColor: "rgba(139,92,246,0.3)", color: "var(--foreground)" }} autoFocus />
-                <Button size="sm" onClick={handleRunCmd} className="bg-green-600 hover:bg-green-700 text-white h-10 px-4 text-xs font-bold" disabled={!runCmd.trim()}>
+                  placeholder="Type your command..."
+                  className="flex-1 h-9 px-3 text-xs font-mono rounded-lg border outline-none transition-all focus:border-accent/50"
+                  style={{ background: "var(--background)", borderColor: "rgba(139,92,246,0.25)", color: "var(--foreground)" }} autoFocus />
+                <button onClick={handleRunCmd} disabled={!runCmd.trim()}
+                  className="h-9 px-4 text-xs font-bold rounded-lg text-white transition-all disabled:opacity-40"
+                  style={{ background: runCmd.trim() ? "linear-gradient(135deg,#16a34a,#22c55e)" : "#1d1033" }}>
                   Execute
-                </Button>
+                </button>
               </div>
-              <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Quick Presets</div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">Presets</div>
+              <div className="flex flex-wrap gap-1">
                 {RUN_PRESETS.map((preset) => (
-                  <button key={preset.cmd} onClick={() => { setRunCmd(preset.cmd); }}
-                    className="px-3 py-1.5 rounded-lg text-[11px] font-mono border transition-all hover:text-white"
-                    style={{ borderColor: `${preset.lang === "py" ? "#3776ab" : preset.lang === "js" ? "#cb3837" : preset.lang === "php" ? "#8892bf" : preset.lang === "go" ? "#00add8" : "#22c55e"}40`, color: "var(--foreground)" }}>
+                  <button key={preset.cmd} onClick={() => preset.lang !== "sep" && setRunCmd(preset.cmd)}
+                    className={`preset-btn ${preset.lang === "sep" ? "opacity-20 cursor-default" : "hover:text-white"}`}
+                    style={{ borderColor: preset.lang === "sep" ? "transparent" : `${preset.lang === "py" ? "#3776ab" : preset.lang === "js" ? "#cb3837" : preset.lang === "php" ? "#8892bf" : preset.lang === "go" ? "#00add8" : "#22c55e"}40`, color: "var(--foreground)" }}>
                     {preset.label}
                   </button>
                 ))}
@@ -782,27 +778,29 @@ export default function TerminalPage() {
         )}
 
         {showInstallDialog && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setShowInstallDialog(false)}>
-            <div className="rounded-2xl border w-full max-w-lg p-5 shadow-2xl" style={{ background: "var(--card)", borderColor: "var(--border)" }} onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 animate-fadeIn" onClick={() => setShowInstallDialog(false)}>
+            <div className="rounded-2xl border w-full max-w-lg p-4 md:p-5 shadow-2xl animate-scaleIn" style={{ background: "var(--card)", borderColor: "var(--border)" }} onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2"><Package className="w-4 h-4 text-cyan-400" /> Install Packages</h3>
-                <button onClick={() => setShowInstallDialog(false)} className="text-zinc-500 hover:text-white"><X className="w-4 h-4" /></button>
+                <button onClick={() => setShowInstallDialog(false)} className="text-zinc-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/5"><X className="w-3.5 h-3.5" /></button>
               </div>
               <div className="flex gap-2 mb-3">
                 <input value={installCmd} onChange={(e) => setInstallCmd(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleInstallCmd(); if (e.key === "Escape") setShowInstallDialog(false); }}
-                  placeholder="Type install command here..."
-                  className="flex-1 h-10 px-3 text-xs font-mono rounded-lg border outline-none"
-                  style={{ background: "var(--background)", borderColor: "rgba(139,92,246,0.3)", color: "var(--foreground)" }} autoFocus />
-                <Button size="sm" onClick={handleInstallCmd} className="bg-cyan-600 hover:bg-cyan-700 text-white h-10 px-4 text-xs font-bold" disabled={!installCmd.trim()}>
+                  placeholder="Type install command..."
+                  className="flex-1 h-9 px-3 text-xs font-mono rounded-lg border outline-none transition-all focus:border-accent/50"
+                  style={{ background: "var(--background)", borderColor: "rgba(139,92,246,0.25)", color: "var(--foreground)" }} autoFocus />
+                <button onClick={handleInstallCmd} disabled={!installCmd.trim()}
+                  className="h-9 px-4 text-xs font-bold rounded-lg text-white transition-all disabled:opacity-40"
+                  style={{ background: installCmd.trim() ? "linear-gradient(135deg,#0891b2,#06b6d4)" : "#1d1033" }}>
                   Install
-                </Button>
+                </button>
               </div>
-              <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Quick Presets</div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">Presets</div>
+              <div className="flex flex-wrap gap-1">
                 {INSTALL_PRESETS.map((preset) => (
-                  <button key={preset.cmd} onClick={() => { setInstallCmd(preset.cmd); }}
-                    className="px-3 py-1.5 rounded-lg text-[11px] font-mono border transition-all hover:text-white"
+                  <button key={preset.cmd} onClick={() => setInstallCmd(preset.cmd)}
+                    className="preset-btn hover:text-white"
                     style={{ borderColor: `${preset.lang === "py" ? "#3776ab" : preset.lang === "js" ? "#cb3837" : preset.lang === "php" ? "#8892bf" : preset.lang === "go" ? "#00add8" : "#22c55e"}40`, color: "var(--foreground)" }}>
                     {preset.label}
                   </button>

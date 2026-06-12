@@ -51,7 +51,7 @@ router.put("/auth/profile", authenticate, async (req: Request, res: Response): P
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
     const updates: Record<string, any> = {};
     if (display_name) updates.display_name = display_name;
-    if (avatar !== undefined) updates.avatar = avatar;
+    if (avatar !== undefined) updates.avatar = avatar || null;
     if (current_password && new_password) {
       if (!bcrypt.compareSync(current_password, user.password_hash)) {
         res.status(400).json({ error: "Current password is incorrect" }); return;
