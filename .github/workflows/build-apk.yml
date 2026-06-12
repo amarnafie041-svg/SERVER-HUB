@@ -45,6 +45,7 @@ jobs:
       - name: Build APK
         working-directory: frontend/android
         run: |
+          chmod +x ./gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
 
       - name: Upload APK
