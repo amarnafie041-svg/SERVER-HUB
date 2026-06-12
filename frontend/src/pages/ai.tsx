@@ -216,6 +216,7 @@ export default function AIPage() {
                 </div>
                 <div className={`max-w-[80%] ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col gap-1`}>
                   {msg.role === "assistant" && msg.model && <span className="text-[10px] text-zinc-600 px-1">{msg.model}</span>}
+                    {msg.role === "user" && <span className="text-[10px] text-zinc-600 px-1">{user?.display_name || user?.username}</span>}
                   <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg.role === "user" ? "rounded-tr-sm" : "rounded-tl-sm"}`}
                     style={msg.role === "user" ? { background: "#1d1033", border: "1px solid rgba(139,92,246,0.3)" } : { background: "#140a24", border: "1px solid rgba(139,92,246,0.15)" }}>
                     {msg.streaming ? (
