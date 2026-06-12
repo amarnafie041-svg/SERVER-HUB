@@ -92,9 +92,11 @@ class DockerManager {
         await this.docker!.createNetwork({
           Name: NETWORK_NAME,
           Driver: "bridge",
+          Internal: false,
           Options: {
             "com.docker.network.bridge.name": "sh-net",
             "com.docker.network.bridge.enable_ip_masquerade": "true",
+            "com.docker.network.bridge.enable_icc": "false",
             "com.docker.network.driver.mtu": "1500",
           },
           IPAM: { Config: [{ Subnet: "172.28.0.0/16" }] },

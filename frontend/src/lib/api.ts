@@ -76,6 +76,14 @@ export const api = {
     request<{ available: boolean; containers: any[] }>("/api/docker/status"),
   getDockerInfo: () =>
     request<{ available: boolean; containers: any[]; total: number }>("/api/docker/info"),
+  getMyDockerContainer: () =>
+    request<{ exists: boolean; username?: string; status?: string; stats?: any }>("/api/docker/my-container"),
+  dockerStartMyContainer: () =>
+    request<{ success: boolean }>(`/api/docker/my-container/start`, { method: "POST" }),
+  dockerStopMyContainer: () =>
+    request<{ success: boolean }>(`/api/docker/my-container/stop`, { method: "POST" }),
+  dockerRestartMyContainer: () =>
+    request<{ success: boolean }>(`/api/docker/my-container/restart`, { method: "POST" }),
   getDockerContainerStats: (username: string) =>
     request<any>(`/api/docker/container/${encodeURIComponent(username)}/stats`),
   getDockerContainerLogs: (username: string, tail?: number) =>

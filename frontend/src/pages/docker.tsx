@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Play, Square, RefreshCcw, Pause, Trash2, TerminalSquare, Activity, Cpu, HardDrive, Globe, Server, Bug, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/auth";
 import { useToast } from "@/hooks/use-toast";
 
 function formatBytes(bytes: number): string {
@@ -52,6 +53,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function DockerPage() {
+  const { user } = useAuth();
   const [available, setAvailable] = useState(false);
   const [containers, setContainers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,18 +63,27 @@ export default function DockerPage() {
   const [containerProcs, setContainerProcs] = useState<any[]>([]);
   const [logTail, setLogTail] = useState(50);
   const { toast } = useToast();
+  const isAdmin = user?.role === "admin";
 
   const fetchData = useCallback(async () => {
     try {
-      const info = await api.getDockerInfo();
-      setAvailable(info.available);
-      setContainers(info.containers || []);
+      if (isAdmin) {
+        const info = await api.getDockerInfo();
+        setAvailable(info.available);
+        setContainers(info.containers || []);
+      } else {
+        const info = await api.getMyDockerContainer();
+        setAvailable(true);
+        const c = info.exists ? [{ ...info }] : [];
+        setContainers(c);
+        if (info.exists) setSelectedContainer(info as any);
+      }
     } catch {
       setAvailable(false);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -91,7 +102,7 @@ export default function DockerPage() {
 
   const doAction = async (action: string, username: string) => {
     try {
-      const actions: Record<string, any> = {
+      const adminActions: Record<string, any> = {
         start: api.dockerStartContainer,
         stop: api.dockerStopContainer,
         restart: api.dockerRestartContainer,
@@ -99,7 +110,13 @@ export default function DockerPage() {
         unpause: api.dockerUnpauseContainer,
         remove: api.dockerRemoveContainer,
       };
-      await actions[action](username);
+      const myActions: Record<string, any> = {
+        start: api.dockerStartMyContainer,
+        stop: api.dockerStopMyContainer,
+        restart: api.dockerRestartMyContainer,
+      };
+      const actions = isAdmin ? adminActions : myActions;
+      await actions[action]();
       toast({ title: `Container ${action}ed`, description: username });
       fetchData();
       if (selectedContainer?.username === username) {
@@ -146,31 +163,33 @@ export default function DockerPage() {
         </div>
       ) : (
         <div className="flex-1 flex min-h-0">
-          <div className="w-72 border-r overflow-y-auto shrink-0" style={{ borderColor: "rgba(139,92,246,0.15)" }}>
-            <div className="p-2 space-y-1.5">
-              {containers.map((c: any) => (
-                <div key={c.username} onClick={() => setSelectedContainer(c)}
-                  className={`flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-all border ${
-                    selectedContainer?.username === c.username
-                      ? "bg-primary/20 border-accent/30 text-white"
-                      : "hover:bg-white/5 border-transparent text-zinc-400 hover:text-zinc-200"
-                  }`}
-                  style={{ borderColor: selectedContainer?.username === c.username ? "rgba(139,92,246,0.3)" : "transparent" }}>
-                  <TerminalSquare className="w-4 h-4 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-mono font-semibold truncate">{c.username}</div>
-                    <StatusBadge status={c.status} />
+          {isAdmin && (
+            <div className="w-72 border-r overflow-y-auto shrink-0" style={{ borderColor: "rgba(139,92,246,0.15)" }}>
+              <div className="p-2 space-y-1.5">
+                {containers.map((c: any) => (
+                  <div key={c.username} onClick={() => setSelectedContainer(c)}
+                    className={`flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-all border ${
+                      selectedContainer?.username === c.username
+                        ? "bg-primary/20 border-accent/30 text-white"
+                        : "hover:bg-white/5 border-transparent text-zinc-400 hover:text-zinc-200"
+                    }`}
+                    style={{ borderColor: selectedContainer?.username === c.username ? "rgba(139,92,246,0.3)" : "transparent" }}>
+                    <TerminalSquare className="w-4 h-4 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-mono font-semibold truncate">{c.username}</div>
+                      <StatusBadge status={c.status} />
+                    </div>
+                    {c.restartCount > 0 && (
+                      <span className="text-[9px] text-yellow-500 bg-yellow-500/10 px-1 rounded">{c.restartCount}x</span>
+                    )}
                   </div>
-                  {c.restartCount > 0 && (
-                    <span className="text-[9px] text-yellow-500 bg-yellow-500/10 px-1 rounded">{c.restartCount}x</span>
-                  )}
-                </div>
-              ))}
-              {containers.length === 0 && (
-                <div className="text-xs text-zinc-600 text-center py-8">No containers yet</div>
-              )}
+                ))}
+                {containers.length === 0 && (
+                  <div className="text-xs text-zinc-600 text-center py-8">No containers yet</div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {!selectedContainer ? (
