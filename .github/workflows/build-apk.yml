@@ -51,11 +51,13 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          echo "::group::Gradle error log (last 30 lines)"
+          {
+            echo "## Gradle Build Error Log";
+            echo '```';
+            cat /tmp/gradle.log;
+            echo '```';
+          } >> $GITHUB_STEP_SUMMARY
           tail -30 /tmp/gradle.log
-          echo "::endgroup::"
-          # Also extract the key error lines
-          grep -i -E "(error|FAILED|FAILURE|Exception|Build failed)" /tmp/gradle.log | head -20
 
       - name: Verify APK
         if: success() || failure()
