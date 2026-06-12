@@ -64,25 +64,28 @@ const VIRTUAL_KEYS = [
   { label: "▶", value: "\x1b[C", color: "#8b5cf6" },
 ];
 
-const ELMODMEN_BANNER = [
-  "${grn}╔══════════════════════════════════════════════════════════════╗${rst}",
-  "${grn}║${rst}  ${bold}${ylw}███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗${rst}  ${grn}║${rst}",
-  "${grn}║${rst}  ${bold}${ylw}██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║${rst}  ${grn}║${rst}",
-  "${grn}║${rst}  ${bold}${ylw}█████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║${rst}  ${grn}║${rst}",
-  "${grn}║${rst}  ${bold}${ylw}██╔══╝  ██║     ██║╚██╔╝██║██║   ██║██║  ██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║${rst}  ${grn}║${rst}",
-  "${grn}║${rst}  ${bold}${ylw}███████╗███████╗██║ ╚═╝ ██║╚██████╔╝██████╔╝██║ ╚═╝ ██║███████╗██║ ╚████║${rst}  ${grn}║${rst}",
-  "${grn}║${rst}  ${bold}${ylw}╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝${rst}  ${grn}║${rst}",
-  "${grn}║${rst}                                                                                    ${grn}║${rst}",
-  "${grn}║${rst}              ${bold}${g(250)}██╗  ██╗██╗   ██╗██████╗ ███████╗██████╗ ██╗  ██╗${rst}              ${grn}║${rst}",
-  "${grn}║${rst}              ${bold}${g(250)}██║  ██║██║   ██║██╔══██╗██╔════╝██╔══██╗██║  ██║${rst}              ${grn}║${rst}",
-  "${grn}║${rst}              ${bold}${g(250)}███████║██║   ██║██████╔╝█████╗  ██████╔╝███████║${rst}              ${grn}║${rst}",
-  "${grn}║${rst}              ${bold}${g(250)}██╔══██║██║   ██║██╔══██╗██╔══╝  ██╔══██╗██╔══██║${rst}              ${grn}║${rst}",
-  "${grn}║${rst}              ${bold}${g(250)}██║  ██║╚██████╔╝██████╔╝███████╗██║  ██║██║  ██║${rst}              ${grn}║${rst}",
-  "${grn}║${rst}              ${bold}${g(250)}╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝${rst}              ${grn}║${rst}",
-  "${grn}║${rst}                                                                                    ${grn}║${rst}",
-  "${grn}║${rst}    ${dim}${g(245)}SERVER HUB v6 — Isolated Sandbox Terminal${rst}    ${grn}║${rst}",
-  "${grn}║${rst}    ${dim}${g(245)}Type your commands below after the prompt sign ${rst}${ylw}$${rst}${dim}${g(245)}                          ${rst}    ${grn}║${rst}",
-  "${grn}╚══════════════════════════════════════════════════════════════╝${rst}",
+const DESKTOP_BANNER = [
+  "${grn}╔══════════════════════════════════════════════════════════════════════╗${rst}",
+  "${grn}║${rst}                                                                    ${grn}║${rst}",
+  "${grn}║${rst}                         ${bold}${ylw}ELMODMEN HOST v6${rst}                          ${grn}║${rst}",
+  "${grn}║${rst}                                                                    ${grn}║${rst}",
+  "${grn}║${rst}                    ${dim}${g(245)}Isolated Sandbox Terminal${rst}                       ${grn}║${rst}",
+  "${grn}║${rst}               ${dim}${g(245)}Type your commands after the ${rst}${ylw}$${rst}${dim}${g(245)} prompt${rst}                ${grn}║${rst}",
+  "${grn}║${rst}                                                                    ${grn}║${rst}",
+  "${grn}╚══════════════════════════════════════════════════════════════════════╝${rst}",
+  "",
+  "${ylw}$ ${rst}",
+].join("\r\n");
+
+const MOBILE_BANNER = [
+  "${grn}╔══════════════════════════════╗${rst}",
+  "${grn}║${rst}                              ${grn}║${rst}",
+  "${grn}║${rst}      ${bold}${ylw}ELMODMEN HOST v6${rst}       ${grn}║${rst}",
+  "${grn}║${rst}                              ${grn}║${rst}",
+  "${grn}║${rst}    ${dim}${g(245)}Isolated Sandbox Term${rst}    ${grn}║${rst}",
+  "${grn}║${rst}   ${dim}${g(245)}Type commands after ${rst}${ylw}$${rst}${dim}${g(245)}${rst}     ${grn}║${rst}",
+  "${grn}║${rst}                              ${grn}║${rst}",
+  "${grn}╚══════════════════════════════╝${rst}",
   "",
   "${ylw}$ ${rst}",
 ].join("\r\n");
@@ -200,14 +203,14 @@ export default function TerminalPage() {
     const dim = "\x1b[2m";
     const grn = g(46);
     const ylw = g(226);
-    const cyn = g(87);
-    const banner = ELMODMEN_BANNER
+    const cols = term.cols || 80;
+    const raw = cols < 50 ? MOBILE_BANNER : DESKTOP_BANNER;
+    const banner = raw
       .replace(/\$\{grn\}/g, grn)
       .replace(/\$\{rst\}/g, rst)
       .replace(/\$\{bold\}/g, bold)
       .replace(/\$\{dim\}/g, dim)
       .replace(/\$\{ylw\}/g, ylw)
-      .replace(/\$\{cyn\}/g, cyn)
       .replace(/\$\{g\((\d+)\)\}/g, (_, c) => g(parseInt(c)));
     term.write(banner);
   };
@@ -350,6 +353,7 @@ export default function TerminalPage() {
     });
     if (!welcomeShown.current[tabId]) {
       welcomeShown.current[tabId] = true;
+      term.clear();
       writeElmodmenBanner(term);
     }
     term.onSelectionChange(() => {
