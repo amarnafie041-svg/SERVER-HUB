@@ -88,14 +88,14 @@ const DESKTOP_BANNER = [
 ].join("\r\n");
 
 const MOBILE_BANNER = [
-  "${grn}╔══════════════════════════════╗${rst}",
-  "${grn}║${rst}                              ${grn}║${rst}",
-  "${grn}║${rst}      ${bold}${ylw}ELMODMEN HOST v6${rst}       ${grn}║${rst}",
-  "${grn}║${rst}                              ${grn}║${rst}",
-  "${grn}║${rst}    ${dim}${g(245)}Isolated Sandbox Term${rst}    ${grn}║${rst}",
-  "${grn}║${rst}   ${dim}${g(245)}Type commands after ${rst}${ylw}$${rst}${dim}${g(245)}${rst}     ${grn}║${rst}",
-  "${grn}║${rst}                              ${grn}║${rst}",
-  "${grn}╚══════════════════════════════╝${rst}",
+  "${grn}╔════════════════════════════════════════╗${rst}",
+  "${grn}║${rst}                                        ${grn}║${rst}",
+  "${grn}║${rst}            ${bold}${ylw}ELMODMEN HOST v6${rst}            ${grn}║${rst}",
+  "${grn}║${rst}                                        ${grn}║${rst}",
+  "${grn}║${rst}        ${dim}${g(245)}Isolated Sandbox Terminal${rst}       ${grn}║${rst}",
+  "${grn}║${rst}    ${dim}${g(245)}Type commands after the ${rst}${ylw}$${rst}${dim}${g(245)} prompt${rst}    ${grn}║${rst}",
+  "${grn}║${rst}                                        ${grn}║${rst}",
+  "${grn}╚════════════════════════════════════════╝${rst}",
   "",
   "${ylw}$ ${rst}",
 ].join("\r\n");
@@ -214,7 +214,7 @@ export default function TerminalPage() {
     const grn = g(46);
     const ylw = g(226);
     const cols = term.cols || 80;
-    const raw = cols < 50 ? MOBILE_BANNER : DESKTOP_BANNER;
+    const raw = cols < 81 ? MOBILE_BANNER : DESKTOP_BANNER;
     const banner = raw
       .replace(/\$\{grn\}/g, grn)
       .replace(/\$\{rst\}/g, rst)
