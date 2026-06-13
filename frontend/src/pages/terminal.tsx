@@ -365,14 +365,23 @@ export default function TerminalPage() {
     term.loadAddon(unicode11Addon);
     term.unicode.activeVersion = "11";
     term.open(el);
-    try { fitAddon.fit(); } catch {}
     res.term = term;
     res.fitAddon = fitAddon;
+    let bannerActive = true;
+    const rewriteBanner = () => {
+      try { fitAddon.fit(); } catch {}
+      term.clear();
+      writeElmodmenBanner(term);
+      bannerActive = true;
+    };
     const resizeObs = new ResizeObserver(() => {
       if (res.destroyed || !res.term) { resizeObs.disconnect(); return; }
       try {
         fitAddon.fit();
-        term.scrollToBottom();
+        if (bannerActive) {
+          term.clear();
+          writeElmodmenBanner(term);
+        }
         const ws = res.ws;
         if (ws?.readyState === WebSocket.OPEN) {
           const dims = fitAddon.proposeDimensions();
@@ -380,20 +389,16 @@ export default function TerminalPage() {
         }
       } catch {}
     });
-    resizeObs.observe(el);
-    res.resizeObserver = resizeObs;
     term.onData((data) => {
+      bannerActive = false;
       const { ws } = getRes(tabId);
       if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "input", data }));
     });
-    term.clear();
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        try { fitAddon.fit(); } catch {}
-        term.clear();
-        writeElmodmenBanner(term);
-      });
-    });
+    setTimeout(() => {
+      rewriteBanner();
+      resizeObs.observe(el);
+      res.resizeObserver = resizeObs;
+    }, 50);
     term.onSelectionChange(() => {
       const sel = term.getSelection();
       if (sel) navigator.clipboard.writeText(sel).catch(() => {});
