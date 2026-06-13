@@ -3,9 +3,12 @@ import { Request, Response, NextFunction } from "express";
 const requestCounts = new Map<string, { count: number; resetAt: number }>();
 
 const WINDOW_MS = 60_000;
-const MAX_REQUESTS = 100;
+const MAX_REQUESTS = 200;
+const UPLOAD_MAX_REQUESTS = 50;
 
 export function rateLimiter(req: Request, res: Response, next: NextFunction): void {
+  const isUpload = req.path?.includes("/files/upload") || req.path?.includes("/files/delete") || req.path?.includes("/files/write");
+  const maxReq = isUpload ? UPLOAD_MAX_REQUESTS : MAX_REQUESTS;
   const key = req.ip || req.socket.remoteAddress || "unknown";
   const now = Date.now();
   let record = requestCounts.get(key);
@@ -14,10 +17,10 @@ export function rateLimiter(req: Request, res: Response, next: NextFunction): vo
     requestCounts.set(key, record);
   }
   record.count++;
-  res.setHeader("X-RateLimit-Limit", String(MAX_REQUESTS));
-  res.setHeader("X-RateLimit-Remaining", String(Math.max(0, MAX_REQUESTS - record.count)));
+  res.setHeader("X-RateLimit-Limit", String(maxReq));
+  res.setHeader("X-RateLimit-Remaining", String(Math.max(0, maxReq - record.count)));
   res.setHeader("X-RateLimit-Reset", String(Math.ceil(record.resetAt / 1000)));
-  if (record.count > MAX_REQUESTS) {
+  if (record.count > maxReq) {
     res.status(429).json({ error: "Too many requests" });
     return;
   }

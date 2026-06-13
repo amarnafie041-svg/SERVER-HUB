@@ -53,7 +53,7 @@ export default function FilesPage() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [previewFile, setPreviewFile] = useState<{ path: string; content?: string; isImage?: boolean; name: string } | null>(null);
+  const [previewFile, setPreviewFile] = useState<{ path: string; content?: string; isImage?: boolean; name: string; imageUrl?: string } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [newFileModal, setNewFileModal] = useState(false);
   const [newFileName, setNewFileName] = useState("");
@@ -101,7 +101,13 @@ export default function FilesPage() {
       if (data.content !== undefined) {
         const imageExts = [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"];
         if (imageExts.some((e) => item.name.toLowerCase().endsWith(e))) {
-          setPreviewFile({ path: item.path, isImage: true, name: item.name });
+          const token = localStorage.getItem("sh_token");
+          const resp = await fetch(`/api/files/read?path=${encodeURIComponent(item.path)}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          const blob = await resp.blob();
+          const url = URL.createObjectURL(blob);
+          setPreviewFile({ path: item.path, isImage: true, name: item.name, imageUrl: url });
         } else {
           setPreviewFile({ path: item.path, content: data.content, name: item.name });
         }
@@ -168,6 +174,11 @@ export default function FilesPage() {
       setExtracting(false);
     }
   };
+
+  const closePreview = useCallback(() => {
+    if (previewFile?.imageUrl) URL.revokeObjectURL(previewFile.imageUrl);
+    setPreviewFile(null);
+  }, [previewFile]);
 
   const handleUpload = async (files: FileList) => {
     const uploadFile = (file: File) => new Promise<void>((resolve) => {
@@ -364,16 +375,16 @@ export default function FilesPage() {
       )}
 
       {previewFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4" onClick={() => setPreviewFile(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4" onClick={closePreview}>
           <div className="rounded-2xl border w-full max-w-4xl max-h-[88vh] flex flex-col overflow-hidden"
             style={{ background: "#0b0616", borderColor: "rgba(139,92,246,0.3)" }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b shrink-0" style={{ borderColor: "rgba(139,92,246,0.2)" }}>
               <div className="flex items-center gap-2"><File className="w-4 h-4 text-accent" /><span className="text-sm font-mono text-zinc-300">{previewFile.name}</span></div>
-              <button onClick={() => setPreviewFile(null)} className="text-zinc-500 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+              <button onClick={closePreview} className="text-zinc-500 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
             </div>
             <div className="flex-1 overflow-auto p-4">
               {previewFile.isImage ? (
-                <img src={`/api/files/read?path=${encodeURIComponent(previewFile.path)}`} className="max-w-full mx-auto rounded-lg" alt={previewFile.name} />
+                <img src={previewFile.imageUrl} className="max-w-full mx-auto rounded-lg" alt={previewFile.name} />
               ) : (
                 <pre className="text-xs font-mono text-zinc-300 whitespace-pre-wrap break-words leading-relaxed">{previewFile.content}</pre>
               )}

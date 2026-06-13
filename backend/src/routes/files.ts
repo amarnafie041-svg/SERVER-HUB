@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { execFile, execSync } from "child_process";
 import { promisify } from "util";
+import busboy from "busboy";
 import { logger } from "../lib/logger";
 import { authenticate } from "../middleware/authenticate";
 import { dockerManager } from "../lib/docker-manager";
@@ -338,7 +339,6 @@ router.post("/files/upload", authenticate, async (req: Request, res: Response): 
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
     await ensureUserIsolation(userId, username);
-    const busboy = await import("busboy");
     let uploadPath = (req.headers["x-upload-path"] as string) || "/home/runner";
 
     const useDocker = dockerManager.isAvailable;
@@ -350,19 +350,26 @@ router.post("/files/upload", authenticate, async (req: Request, res: Response): 
       uploadPath = relative;
     }
 
-    const bb = busboy.default({
+    const bb = busboy({
       headers: req.headers,
       limits: { fileSize: 50 * 1024 * 1024, files: 10 },
     });
     let pendingWrites = 0;
     let uploadError: string | null = null;
+    let responseSent = false;
+
+    const sendResponse = (status: number, data: any) => {
+      if (responseSent) return;
+      responseSent = true;
+      res.status(status).json(data);
+    };
 
     const checkDone = () => {
       if (pendingWrites === 0) {
         if (uploadError) {
-          res.status(400).json({ success: false, message: uploadError });
-        } else {
-          res.json({ success: true, message: "File uploaded" });
+          sendResponse(400, { success: false, message: uploadError });
+        } else if (!responseSent) {
+          sendResponse(200, { success: true, message: "File uploaded" });
         }
       }
     };
@@ -419,15 +426,11 @@ router.post("/files/upload", authenticate, async (req: Request, res: Response): 
 
     bb.on("error", (err: Error) => {
       uploadError = err.message;
-      if (pendingWrites === 0) {
-        res.status(400).json({ success: false, message: uploadError });
-      }
+      sendResponse(400, { success: false, message: uploadError });
     });
 
     bb.on("finish", () => {
-      if (pendingWrites === 0) {
-        checkDone();
-      }
+      checkDone();
     });
 
     req.pipe(bb);
