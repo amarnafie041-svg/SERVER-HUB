@@ -64,19 +64,75 @@ const VIRTUAL_KEYS = [
   { label: "▶", value: "\x1b[C", color: "#8b5cf6" },
 ];
 
-function buildBanner(): string {
+function buildBanner(cols: number): string {
   const rst = "\x1b[0m";
   const ylw = "\x1b[38;5;226m";
+  const dim = "\x1b[2m";
   const bold = "\x1b[1m";
-  const t = (s: string) => s.replace(/\$\{ylw\}/g, ylw).replace(/\$\{rst\}/g, rst).replace(/\$\{bold\}/g, bold);
-  const w = 18;
+  const t = (s: string) => s.replace(/\$\{ylw\}/g, ylw).replace(/\$\{rst\}/g, rst).replace(/\$\{dim\}/g, dim).replace(/\$\{bold\}/g, bold);
+  if (cols < 14) return t("${ylw}$ ${rst}");
+  const inner = cols - 2;
+  const pad = (n: number) => " ".repeat(Math.max(0, n));
+
+  if (cols >= 79) {
+    const art = [
+      "${ylw}███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗${rst}",
+      "${ylw}██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║${rst}",
+      "${ylw}█████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║${rst}",
+      "${ylw}██╔══╝  ██║     ██║╚██╔╝██║██║   ██║██║  ██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║${rst}",
+      "${ylw}███████╗███████╗██║ ╚═╝ ██║╚██████╔╝██████╔╝██║ ╚═╝ ██║███████╗██║ ╚████║${rst}",
+      "${ylw}╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝${rst}",
+    ];
+    const aw = 73;
+    const lp = Math.floor((inner - aw) / 2);
+    const rp = inner - lp - aw;
+    return [
+      "",
+      "┌" + "─".repeat(inner) + "┐",
+      "│" + pad(inner) + "│",
+      ...art.map(l => "│" + pad(lp) + t(l) + pad(rp) + "│"),
+      "│" + pad(inner) + "│",
+      "└" + "─".repeat(inner) + "┘",
+      "",
+      t("${ylw}$ ${rst}"),
+    ].join("\r\n");
+  }
+
+  if (cols >= 47) {
+    const art = [
+      "${ylw} _     ______  __  __ ______ _____ _   _ ${rst}",
+      "${ylw}| |   |  ____||  \\/  |  ____|_   _| \\ | |${rst}",
+      "${ylw}| |   | |__   | \\  / | |__    | | |  \\| |${rst}",
+      "${ylw}| |   |  __|  | |\\/| |  __|   | | | . ` |${rst}",
+      "${ylw}| |___| |____ | |  | | |____ _| |_| |\\  |${rst}",
+      "${ylw}|_____|______||_|  |_|______|_____|_| \\_|${rst}",
+    ];
+    const aw = 41;
+    const lp = Math.floor((inner - aw) / 2);
+    const rp = inner - lp - aw;
+    return [
+      "",
+      "┌" + "─".repeat(inner) + "┐",
+      "│" + pad(inner) + "│",
+      ...art.map(l => "│" + pad(lp) + t(l) + pad(rp) + "│"),
+      "│" + pad(inner) + "│",
+      "└" + "─".repeat(inner) + "┘",
+      "",
+      t("${ylw}$ ${rst}"),
+    ].join("\r\n");
+  }
+
+  const txt = "${bold}${ylw}ELMODMEN${rst}";
+  const tw = 8;
+  const lp = Math.floor((inner - tw) / 2);
+  const rp = inner - lp - tw;
   return [
     "",
-    "┌" + "─".repeat(w) + "┐",
-    "│" + " ".repeat(w) + "│",
-    "│     " + t("${bold}${ylw}ELMODMEN${rst}") + "     │",
-    "│" + " ".repeat(w) + "│",
-    "└" + "─".repeat(w) + "┘",
+    "┌" + "─".repeat(inner) + "┐",
+    "│" + pad(inner) + "│",
+    "│" + pad(lp) + t(txt) + pad(rp) + "│",
+    "│" + pad(inner) + "│",
+    "└" + "─".repeat(inner) + "┘",
     "",
     t("${ylw}$ ${rst}"),
   ].join("\r\n");
@@ -188,7 +244,7 @@ export default function TerminalPage() {
   };
 
   const writeElmodmenBanner = (t: XTerm) => {
-    t.write(buildBanner());
+    t.write(buildBanner(t.cols || 80));
   };
 
   const sendToTerminal = (text: string) => {
