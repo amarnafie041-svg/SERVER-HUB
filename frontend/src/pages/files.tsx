@@ -176,9 +176,11 @@ export default function FilesPage() {
   };
 
   const closePreview = useCallback(() => {
-    if (previewFile?.imageUrl) URL.revokeObjectURL(previewFile.imageUrl);
-    setPreviewFile(null);
-  }, [previewFile]);
+    setPreviewFile((prev) => {
+      if (prev?.imageUrl) URL.revokeObjectURL(prev.imageUrl);
+      return null;
+    });
+  }, []);
 
   const handleUpload = async (files: FileList) => {
     const uploadFile = (file: File) => new Promise<void>((resolve) => {
