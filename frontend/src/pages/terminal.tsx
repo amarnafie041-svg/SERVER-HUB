@@ -67,7 +67,7 @@ const VIRTUAL_KEYS = [
 const S = (n: number) => " ".repeat(n);
 const BOX = { tl: "┌", tr: "┐", bl: "└", br: "┘", h: "─", v: "│" };
 
-const ELM = [
+const ELM73 = [
   "${ylw}███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗${rst}",
   "${ylw}██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║${rst}",
   "${ylw}█████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║${rst}",
@@ -76,7 +76,7 @@ const ELM = [
   "${ylw}╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝${rst}",
 ];
 
-const VPS_L = [
+const VPS25 = [
   "${dim}${ylw}██╗   ██╗██████╗ ███████╗${rst}",
   "${dim}${ylw}██║   ██║██╔══██╗██╔════╝${rst}",
   "${dim}${ylw}██║   ██║██████╔╝███████╗${rst}",
@@ -85,22 +85,7 @@ const VPS_L = [
   "${dim}${ylw}  ╚═══╝  ╚═╝     ╚══════╝${rst}",
 ];
 
-const DESKTOP_BANNER = [
-  "",
-  BOX.tl + BOX.h.repeat(77) + BOX.tr,
-  BOX.v + S(77) + BOX.v,
-  ...ELM.map(l => BOX.v + "  " + l + "  " + BOX.v),
-  BOX.v + S(77) + BOX.v,
-  ...VPS_L.map(l => BOX.v + S(26) + l + S(26) + BOX.v),
-  BOX.v + S(77) + BOX.v,
-  BOX.v + S(11) + "${dim}Server Hub v6  •  Isolated Sandbox  •  Secure Terminal${rst}" + S(12) + BOX.v,
-  BOX.v + S(77) + BOX.v,
-  BOX.bl + BOX.h.repeat(77) + BOX.br,
-  "",
-  "${ylw}$ ${rst}",
-].join("\r\n");
-
-const MEDIUM_ELM = [
+const FIG41 = [
   "${ylw} _     ______  __  __ ______ _____ _   _ ${rst}",
   "${ylw}| |   |  ____||  \\/  |  ____|_   _| \\ | |${rst}",
   "${ylw}| |   | |__   | \\  / | |__    | | |  \\| |${rst}",
@@ -109,29 +94,60 @@ const MEDIUM_ELM = [
   "${ylw}|_____|______||_|  |_|______|_____|_| \\_|${rst}",
 ];
 
-const MEDIUM_BANNER = [
-  "",
-  BOX.tl + BOX.h.repeat(43) + BOX.tr,
-  BOX.v + S(43) + BOX.v,
-  ...MEDIUM_ELM.map(l => BOX.v + " " + l + " " + BOX.v),
-  BOX.v + S(43) + BOX.v,
-  BOX.v + S(14) + "${dim}Server Hub v6${rst}" + S(14) + BOX.v,
-  BOX.v + S(43) + BOX.v,
-  BOX.bl + BOX.h.repeat(43) + BOX.br,
-  "",
-  "${ylw}$ ${rst}",
-].join("\r\n");
+function buildBanner(cols: number): string {
+  const rst = "\x1b[0m";
+  const bold = "\x1b[1m";
+  const dim = "\x1b[2m";
+  const g = (c: number) => `\x1b[38;5;${c}m`;
+  const grn = g(46), ylw = g(226);
+  const tpl = (s: string) => s.replace(/\$\{grn\}/g, grn).replace(/\$\{rst\}/g, rst).replace(/\$\{bold\}/g, bold).replace(/\$\{dim\}/g, dim).replace(/\$\{ylw\}/g, ylw).replace(/\$\{g\((\d+)\)\}/g, (_, c) => g(+c));
 
-const MOBILE_BANNER = [
-  "",
-  BOX.tl + BOX.h.repeat(36) + BOX.tr,
-  BOX.v + S(9) + "${bold}${ylw}ELMODMEN VPS v6${rst}" + S(10) + BOX.v,
-  BOX.v + S(6) + "${dim}${ylw}Professional Server Hub${rst}" + S(7) + BOX.v,
-  BOX.v + "${dim}Isolated Sandbox  •  Secure Terminal${rst}" + BOX.v,
-  BOX.bl + BOX.h.repeat(36) + BOX.br,
-  "",
-  "${ylw}$ ${rst}",
-].join("\r\n");
+  if (cols >= 80) {
+    const w = 77;
+    return [
+      "",
+      BOX.tl + BOX.h.repeat(w) + BOX.tr,
+      BOX.v + S(w) + BOX.v,
+      ...ELM73.map(l => BOX.v + "  " + tpl(l) + "  " + BOX.v),
+      BOX.v + S(w) + BOX.v,
+      ...VPS25.map(l => BOX.v + S(26) + tpl(l) + S(26) + BOX.v),
+      BOX.v + S(w) + BOX.v,
+      BOX.v + S(11) + tpl("${dim}Server Hub v6  •  Isolated Sandbox  •  Secure Terminal${rst}") + S(12) + BOX.v,
+      BOX.v + S(w) + BOX.v,
+      BOX.bl + BOX.h.repeat(w) + BOX.br,
+      "",
+      tpl("${ylw}$ ${rst}"),
+    ].join("\r\n");
+  }
+
+  if (cols >= 46) {
+    const w = 43;
+    return [
+      "",
+      BOX.tl + BOX.h.repeat(w) + BOX.tr,
+      BOX.v + S(w) + BOX.v,
+      ...FIG41.map(l => BOX.v + " " + tpl(l) + " " + BOX.v),
+      BOX.v + S(w) + BOX.v,
+      BOX.v + S(14) + tpl("${dim}Server Hub v6${rst}") + S(14) + BOX.v,
+      BOX.v + S(w) + BOX.v,
+      BOX.bl + BOX.h.repeat(w) + BOX.br,
+      "",
+      tpl("${ylw}$ ${rst}"),
+    ].join("\r\n");
+  }
+
+  const w = 36;
+  return [
+    "",
+    BOX.tl + BOX.h.repeat(w) + BOX.tr,
+    BOX.v + S(9) + tpl("${bold}${ylw}ELMODMEN VPS v6${rst}") + S(10) + BOX.v,
+    BOX.v + S(6) + tpl("${dim}${ylw}Professional Server Hub${rst}") + S(7) + BOX.v,
+    BOX.v + tpl("${dim}Isolated Sandbox  •  Secure Terminal${rst}") + BOX.v,
+    BOX.bl + BOX.h.repeat(w) + BOX.br,
+    "",
+    tpl("${ylw}$ ${rst}"),
+  ].join("\r\n");
+}
 
 export default function TerminalPage() {
   const [tabs, setTabs] = useState<Tab[]>([]);
@@ -220,21 +236,6 @@ export default function TerminalPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!activeTabId) return;
-    const res = resources.current[activeTabId];
-    if (!res || res.destroyed || !res.term || !res.fitAddon) return;
-    const raf = requestAnimationFrame(() => {
-      if (res.destroyed || !res.term || !res.fitAddon) return;
-      try {
-        res.fitAddon.fit();
-        res.term.clear();
-        writeElmodmenBanner(res.term);
-      } catch {}
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [activeTabId]);
-
   const setStatus = (tabId: string, s: ConnStatus) =>
     setStatuses((prev) => ({ ...prev, [tabId]: s }));
 
@@ -254,28 +255,7 @@ export default function TerminalPage() {
   };
 
   const writeElmodmenBanner = (term: XTerm) => {
-    const g = (code: number) => `\x1b[38;5;${code}m`;
-    const rst = "\x1b[0m";
-    const bold = "\x1b[1m";
-    const dim = "\x1b[2m";
-    const grn = g(46);
-    const ylw = g(226);
-    const cols = term.cols || 80;
-    let raw;
-    if (cols >= 80) {
-      raw = DESKTOP_BANNER;
-    } else if (cols >= 46) {
-      raw = MEDIUM_BANNER;
-    } else {
-      raw = MOBILE_BANNER;
-    }
-    const banner = raw
-      .replace(/\$\{grn\}/g, grn)
-      .replace(/\$\{rst\}/g, rst)
-      .replace(/\$\{bold\}/g, bold)
-      .replace(/\$\{dim\}/g, dim)
-      .replace(/\$\{ylw\}/g, ylw)
-      .replace(/\$\{g\((\d+)\)\}/g, (_, c) => g(parseInt(c)));
+    const banner = buildBanner(term.cols || 80);
     term.write(banner);
   };
 
