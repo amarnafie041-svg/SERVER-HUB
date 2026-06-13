@@ -70,69 +70,49 @@ function buildBanner(cols: number): string {
   const dim = "\x1b[2m";
   const bold = "\x1b[1m";
   const t = (s: string) => s.replace(/\$\{ylw\}/g, ylw).replace(/\$\{rst\}/g, rst).replace(/\$\{dim\}/g, dim).replace(/\$\{bold\}/g, bold);
-  if (cols < 14) return t("${ylw}$ ${rst}");
-  const inner = cols - 2;
-  const pad = (n: number) => " ".repeat(Math.max(0, n));
+  const hr = "─".repeat(cols);
 
-  if (cols >= 79) {
-    const art = [
-      "${ylw}███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗${rst}",
-      "${ylw}██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║${rst}",
-      "${ylw}█████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║${rst}",
-      "${ylw}██╔══╝  ██║     ██║╚██╔╝██║██║   ██║██║  ██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║${rst}",
-      "${ylw}███████╗███████╗██║ ╚═╝ ██║╚██████╔╝██████╔╝██║ ╚═╝ ██║███████╗██║ ╚████║${rst}",
-      "${ylw}╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝${rst}",
-    ];
-    const aw = 73;
-    const lp = Math.floor((inner - aw) / 2);
-    const rp = inner - lp - aw;
+  if (cols < 18) return t("${ylw}$ ${rst}");
+
+  if (cols >= 60) {
+    const txt = t("${bold}${ylw}E L M O D M E N${rst}");
+    const sub = t("${dim}Isolated Sandbox  •  Secure Terminal${rst}");
+    const cl = Math.floor((cols - 15) / 2);
+    const sl = Math.floor((cols - 32) / 2);
     return [
       "",
-      "┌" + "─".repeat(inner) + "┐",
-      "│" + pad(inner) + "│",
-      ...art.map(l => "│" + pad(lp) + t(l) + pad(rp) + "│"),
-      "│" + pad(inner) + "│",
-      "└" + "─".repeat(inner) + "┘",
+      t("${dim}" + hr + "${rst}"),
+      "",
+      " ".repeat(cl) + txt + " ".repeat(cols - cl - 15),
+      "",
+      " ".repeat(sl) + sub + " ".repeat(cols - sl - 32),
+      "",
+      t("${dim}" + hr + "${rst}"),
       "",
       t("${ylw}$ ${rst}"),
     ].join("\r\n");
   }
 
-  if (cols >= 47) {
-    const art = [
-      "${ylw} _     ______  __  __ ______ _____ _   _ ${rst}",
-      "${ylw}| |   |  ____||  \\/  |  ____|_   _| \\ | |${rst}",
-      "${ylw}| |   | |__   | \\  / | |__    | | |  \\| |${rst}",
-      "${ylw}| |   |  __|  | |\\/| |  __|   | | | . ` |${rst}",
-      "${ylw}| |___| |____ | |  | | |____ _| |_| |\\  |${rst}",
-      "${ylw}|_____|______||_|  |_|______|_____|_| \\_|${rst}",
-    ];
-    const aw = 41;
-    const lp = Math.floor((inner - aw) / 2);
-    const rp = inner - lp - aw;
+  if (cols >= 24) {
+    const txt = t("${bold}${ylw}ELMODMEN${rst}");
+    const cl = Math.floor((cols - 8) / 2);
     return [
       "",
-      "┌" + "─".repeat(inner) + "┐",
-      "│" + pad(inner) + "│",
-      ...art.map(l => "│" + pad(lp) + t(l) + pad(rp) + "│"),
-      "│" + pad(inner) + "│",
-      "└" + "─".repeat(inner) + "┘",
+      t("${dim}" + hr + "${rst}"),
+      "",
+      " ".repeat(cl) + txt + " ".repeat(cols - cl - 8),
+      "",
+      t("${dim}" + hr + "${rst}"),
       "",
       t("${ylw}$ ${rst}"),
     ].join("\r\n");
   }
 
-  const txt = "${bold}${ylw}ELMODMEN${rst}";
-  const tw = 8;
-  const lp = Math.floor((inner - tw) / 2);
-  const rp = inner - lp - tw;
+  const txt = t("${bold}${ylw}ELMODMEN${rst}");
+  const cl = Math.floor((cols - 8) / 2);
   return [
     "",
-    "┌" + "─".repeat(inner) + "┐",
-    "│" + pad(inner) + "│",
-    "│" + pad(lp) + t(txt) + pad(rp) + "│",
-    "│" + pad(inner) + "│",
-    "└" + "─".repeat(inner) + "┘",
+    " ".repeat(cl) + txt + " ".repeat(cols - cl - 8),
     "",
     t("${ylw}$ ${rst}"),
   ].join("\r\n");
