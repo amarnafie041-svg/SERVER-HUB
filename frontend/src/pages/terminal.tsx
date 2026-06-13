@@ -67,7 +67,7 @@ const VIRTUAL_KEYS = [
 const S = (n: number) => " ".repeat(n);
 const BOX = { tl: "┌", tr: "┐", bl: "└", br: "┘", h: "─", v: "│" };
 
-const ELM73 = [
+const ELM_BIG = [
   "${ylw}███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗${rst}",
   "${ylw}██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║${rst}",
   "${ylw}█████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║${rst}",
@@ -76,7 +76,7 @@ const ELM73 = [
   "${ylw}╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝${rst}",
 ];
 
-const VPS25 = [
+const VPS_BIG = [
   "${dim}${ylw}██╗   ██╗██████╗ ███████╗${rst}",
   "${dim}${ylw}██║   ██║██╔══██╗██╔════╝${rst}",
   "${dim}${ylw}██║   ██║██████╔╝███████╗${rst}",
@@ -85,67 +85,26 @@ const VPS25 = [
   "${dim}${ylw}  ╚═══╝  ╚═╝     ╚══════╝${rst}",
 ];
 
-const FIG41 = [
-  "${ylw} _     ______  __  __ ______ _____ _   _ ${rst}",
-  "${ylw}| |   |  ____||  \\/  |  ____|_   _| \\ | |${rst}",
-  "${ylw}| |   | |__   | \\  / | |__    | | |  \\| |${rst}",
-  "${ylw}| |   |  __|  | |\\/| |  __|   | | | . ` |${rst}",
-  "${ylw}| |___| |____ | |  | | |____ _| |_| |\\  |${rst}",
-  "${ylw}|_____|______||_|  |_|______|_____|_| \\_|${rst}",
-];
-
-function buildBanner(cols: number): string {
-  const rst = "\x1b[0m";
-  const bold = "\x1b[1m";
-  const dim = "\x1b[2m";
+function buildBanner(): string {
   const g = (c: number) => `\x1b[38;5;${c}m`;
-  const grn = g(46), ylw = g(226);
-  const tpl = (s: string) => s.replace(/\$\{grn\}/g, grn).replace(/\$\{rst\}/g, rst).replace(/\$\{bold\}/g, bold).replace(/\$\{dim\}/g, dim).replace(/\$\{ylw\}/g, ylw).replace(/\$\{g\((\d+)\)\}/g, (_, c) => g(+c));
-
-  if (cols >= 80) {
-    const w = 77;
-    return [
-      "",
-      BOX.tl + BOX.h.repeat(w) + BOX.tr,
-      BOX.v + S(w) + BOX.v,
-      ...ELM73.map(l => BOX.v + "  " + tpl(l) + "  " + BOX.v),
-      BOX.v + S(w) + BOX.v,
-      ...VPS25.map(l => BOX.v + S(26) + tpl(l) + S(26) + BOX.v),
-      BOX.v + S(w) + BOX.v,
-      BOX.v + S(11) + tpl("${dim}Server Hub v6  •  Isolated Sandbox  •  Secure Terminal${rst}") + S(12) + BOX.v,
-      BOX.v + S(w) + BOX.v,
-      BOX.bl + BOX.h.repeat(w) + BOX.br,
-      "",
-      tpl("${ylw}$ ${rst}"),
-    ].join("\r\n");
-  }
-
-  if (cols >= 46) {
-    const w = 43;
-    return [
-      "",
-      BOX.tl + BOX.h.repeat(w) + BOX.tr,
-      BOX.v + S(w) + BOX.v,
-      ...FIG41.map(l => BOX.v + " " + tpl(l) + " " + BOX.v),
-      BOX.v + S(w) + BOX.v,
-      BOX.v + S(14) + tpl("${dim}Server Hub v6${rst}") + S(14) + BOX.v,
-      BOX.v + S(w) + BOX.v,
-      BOX.bl + BOX.h.repeat(w) + BOX.br,
-      "",
-      tpl("${ylw}$ ${rst}"),
-    ].join("\r\n");
-  }
-
-  const w = 36;
+  const rst = "\x1b[0m";
+  const dim = "\x1b[2m";
+  const ylw = g(226);
+  const t = (s: string) => s.replace(/\$\{ylw\}/g, ylw).replace(/\$\{rst\}/g, rst).replace(/\$\{dim\}/g, dim);
+  const w = 77;
   return [
     "",
     BOX.tl + BOX.h.repeat(w) + BOX.tr,
-    BOX.v + S(9) + tpl("${bold}${ylw}ELMODMEN VPS v6${rst}") + S(10) + BOX.v,
-    BOX.v + S(6) + tpl("${dim}${ylw}Professional Server Hub${rst}") + S(7) + BOX.v,
-    BOX.v + tpl("${dim}Isolated Sandbox  •  Secure Terminal${rst}") + BOX.v,
+    BOX.v + S(w) + BOX.v,
+    ...ELM_BIG.map(l => BOX.v + "  " + t(l) + "  " + BOX.v),
+    BOX.v + S(w) + BOX.v,
+    ...VPS_BIG.map(l => BOX.v + S(26) + t(l) + S(26) + BOX.v),
+    BOX.v + S(w) + BOX.v,
+    BOX.v + S(11) + t("${dim}Server Hub v6  •  Isolated Sandbox  •  Secure Terminal${rst}") + S(12) + BOX.v,
+    BOX.v + S(w) + BOX.v,
     BOX.bl + BOX.h.repeat(w) + BOX.br,
     "",
-    tpl("${ylw}$ ${rst}"),
+    t("${ylw}$ ${rst}"),
   ].join("\r\n");
 }
 
@@ -255,7 +214,7 @@ export default function TerminalPage() {
   };
 
   const writeElmodmenBanner = (term: XTerm) => {
-    const banner = buildBanner(term.cols || 80);
+    const banner = buildBanner();
     term.write(banner);
   };
 
