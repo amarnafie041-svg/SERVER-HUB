@@ -18,7 +18,7 @@ function createWindow() {
   });
 
   win.setMenuBarVisibility(false);
-  win.setTitle("ELMODMEN Server Hub");
+  win.setTitle("EMD VPS");
   win.loadURL(APP_URL);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
