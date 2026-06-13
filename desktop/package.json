@@ -1,0 +1,39 @@
+{
+  "name": "elmodmen-server-hub",
+  "version": "1.0.0",
+  "description": "ELMODMEN VPS Server Hub v5 - Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.elmodmen.serverhub",
+    "productName": "ELMODMEN Server Hub",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.0"
+  }
+}

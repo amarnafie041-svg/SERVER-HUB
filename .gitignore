@@ -10,3 +10,15 @@ Thumbs.db
 .turbo/
 .serverhub/
 serverhub-v5-data.json
+
+# Desktop app
+desktop/node_modules/
+desktop/dist/
+
+# Android app
+android/build/
+android/.gradle/
+android/local.properties
+android/app/build/
+android/.idea/
+android/captures/
