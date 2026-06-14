@@ -49,23 +49,24 @@ function createSandboxDirs(baseDir: string): void {
 
 function createHomeDir(userId?: string): string {
   const id = generateId();
-  const userPart = userId ? sanitizeUserId(userId) + "-" : "";
-  const baseDir = process.env.SANDBOX_BASE_DIR
-    ? path.join(process.env.SANDBOX_BASE_DIR, "sandboxes", userPart + id)
-    : path.join(os.tmpdir(), "sh-sandbox", userPart + id);
+  const userPart = userId ? sanitizeUserId(userId) : "unknown";
+  const baseDir = path.resolve("/home/runner", `user_${userPart}`);
+  fs.mkdirSync(baseDir, { recursive: true, mode: 0o755 });
   createSandboxDirs(baseDir);
 
   const sandboxShell = path.join(baseDir, ".sandbox-shell.sh");
   const shellContent = `#!/bin/bash
-export SANDBOX_HOME="${baseDir.replace(/\\/g, "/")}"
+export SANDBOX_HOME="${baseDir}"
 export SANDBOX_ID="${id}"
-export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]sandbox\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
-cd "${baseDir.replace(/\\/g, "/")}" || exit 1
+export SANDBOX_USER="${userPart}"
+export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]user_${userPart}\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
+cd "${baseDir}" || exit 1
 ulimit -S -t 30 2>/dev/null
 ulimit -S -f 10240 2>/dev/null
 ulimit -S -n 64 2>/dev/null
 ulimit -S -u 50 2>/dev/null
-BLOCKED=(sudo su chroot docker docker-compose systemctl service journalctl shutdown reboot poweroff halt init mount umount fdisk mkfs dd passwd useradd usermod groupadd modprobe insmod rmmod lsmod iptables ip6tables ufw firewalld crontab at batch nsenter unshare cgexec apt apt-get dpkg yum dnf pacman rpm)
+BLOCKED=(sudo su chroot docker docker-compose systemctl service journalctl shutdown reboot poweroff halt init mount umount fdisk mkfs dd passwd useradd usermod groupadd modprobe insmod rmmod lsmod iptables ip6tables ufw firewalld crontab at batch nsenter unshare cgexec apt apt-get dpkg yum dnf pacman rpm rm)
+ESC_BLOCKED=(cd.. cd\ ..)
 preexec() {
   local cmd="$1"
   local base="\${cmd%% *}"
@@ -75,7 +76,22 @@ preexec() {
       return 1
     fi
   done
-  echo "[SANDBOX:${id}] \$cmd" >> "${baseDir.replace(/\\/g, "/")}/.sandbox_history"
+  local lower="\$(echo "\$cmd" | tr '[:upper:]' '[:lower:]')"
+  if [[ "\$lower" == rm\ * || "\$lower" == *\ rm\ * ]]; then
+    if [[ "\$lower" == *-r* || "\$lower" == *-f* || "\$lower" == *--recursive* || "\$lower" == *--force* ]]; then
+      echo -e "\\e[1;31m⛔ BLOCKED: 'rm -rf' / 'rm -f' not allowed in sandbox\\e[0m"
+      return 1
+    fi
+  fi
+  if [[ "\$cmd" == *".."* || "\$cmd" == *"/"* ]]; then
+    local target
+    target="\$(eval echo "\$cmd" 2>/dev/null)"
+    if [[ "\$target" != "\${SANDBOX_HOME}"* && "\$target" != "."* && "\$target" != "\$HOME"* ]]; then
+      echo -e "\\e[1;31m⛔ BLOCKED: Cannot escape sandbox directory\\e[0m"
+      return 1
+    fi
+  fi
+  echo "[SANDBOX:${id}] \$cmd" >> "${baseDir}/.sandbox_history"
 }
 set -o DEBUG 2>/dev/null
 `;
@@ -91,6 +107,30 @@ set -o DEBUG 2>/dev/null
   const BLOCKED_LIST = "sudo su chroot nsenter unshare cgexec docker docker-compose systemctl service journalctl shutdown reboot poweroff halt init mount umount fdisk mkfs dd passwd useradd usermod groupadd modprobe insmod rmmod lsmod iptables ip6tables ufw firewalld crontab at batch apt apt-get dpkg yum dnf pacman rpm update-alternatives add-apt-repository";
   const rcContent = `# ELMODMEN SANDBOX v6 - Auto functions
 ${blockedCmds(BLOCKED_LIST)}
+rm() {
+  local args=()
+  local banned=false
+  for arg in "$@"; do
+    case "$arg" in
+      -r*|-f*|--recursive|--force) banned=true ;;
+    esac
+  done
+  if [ "$banned" = true ]; then
+    echo -e "\\e[1;31m⛔ BLOCKED: rm -rf / rm -f not allowed in sandbox\\e[0m"
+    return 1
+  fi
+  command rm "$@"
+}
+cd() {
+  local target="\${1:-\$HOME}"
+  local real_target
+  real_target="\$(realpath -m "\$target" 2>/dev/null || echo "\$target")"
+  if [[ "\$real_target" != "\${SANDBOX_HOME}"* ]]; then
+    echo -e "\\e[1;31m⛔ BLOCKED: Cannot escape sandbox directory via cd\\e[0m"
+    return 1
+  fi
+  builtin cd "\$target"
+}
 auto-serve() {
   local cmd_template="$1"
   local start_port="\${2:-8000}"
@@ -122,17 +162,19 @@ auto-serve() {
 `;
   fs.writeFileSync(sandboxrc, rcContent, "utf8");
   fs.writeFileSync(bashrc, `# ELMODMEN SANDBOX v6 - .bashrc
-export SANDBOX_HOME="${baseDir.replace(/\\/g, "/")}"
+export SANDBOX_HOME="${baseDir}"
 export SANDBOX_ID="${id}"
+export SANDBOX_USER="${userPart}"
 source "\${SANDBOX_HOME}/.sandboxrc" 2>/dev/null
-export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]sandbox\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
+export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]user_${userPart}\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
 `, "utf8");
 
   const zshrc = path.join(baseDir, ".zshrc");
-  fs.writeFileSync(zshrc, `export SANDBOX_HOME="${baseDir.replace(/\\/g, "/")}"
+  fs.writeFileSync(zshrc, `export SANDBOX_HOME="${baseDir}"
 export SANDBOX_ID="${id}"
+export SANDBOX_USER="${userPart}"
 source "\${SANDBOX_HOME}/.sandboxrc" 2>/dev/null
-PROMPT='%F{46}┌──(%F{226}sandbox%F{46}㉿%F{226}serverhub%F{46})-[%F{87}%~%F{46}]%f
+PROMPT='%F{46}┌──(%F{226}user_${userPart}%F{46}㉿%F{226}serverhub%F{46})-[%F{87}%~%F{46}]%f
 %F{46}└─%f$ '
 RPROMPT=''
 `, "utf8");
