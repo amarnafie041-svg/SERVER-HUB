@@ -63,6 +63,8 @@ export SANDBOX_HOME="${baseDir}"
 export SANDBOX_ID="${id}"
 export SANDBOX_USER="${name}"
 export PATH="/home/runner/.venv/bin:/home/runner/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PIP_REQUIRE_VIRTUALENV=false
+export PIP_CONFIG_FILE=/home/runner/.config/pip/pip.conf
 export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]user_${name}\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
 cd "${baseDir}" || exit 1
 ulimit -S -t 300 2>/dev/null
@@ -241,8 +243,11 @@ export SANDBOX_HOME="${baseDir}"
 export SANDBOX_ID="${id}"
 export SANDBOX_USER="${name}"
 export PATH="/home/runner/.venv/bin:/home/runner/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PIP_REQUIRE_VIRTUALENV=false
 source /home/runner/.venv/bin/activate 2>/dev/null
 source "\${SANDBOX_HOME}/.sandboxrc" 2>/dev/null
+alias pip='pip --break-system-packages'
+alias pip3='pip3 --break-system-packages'
 export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]user_${name}\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
 `, "utf8");
 
@@ -250,8 +255,11 @@ export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]user_${na
   fs.writeFileSync(zshrc, `export SANDBOX_HOME="${baseDir}"
 export SANDBOX_ID="${id}"
 export SANDBOX_USER="${name}"
+export PIP_REQUIRE_VIRTUALENV=false
 source /home/runner/.venv/bin/activate 2>/dev/null
 source "\${SANDBOX_HOME}/.sandboxrc" 2>/dev/null
+alias pip='pip --break-system-packages'
+alias pip3='pip3 --break-system-packages'
 PROMPT='%F{46}┌──(%F{226}user_${name}%F{46}㉿%F{226}serverhub%F{46})-[%F{87}%~%F{46}]%f
 %F{46}└─%f$ '
 RPROMPT=''

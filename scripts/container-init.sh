@@ -3,6 +3,7 @@ set -e
 
 export TERM=xterm-256color
 export PATH="/home/runner/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PIP_REQUIRE_VIRTUALENV=false
 
 if [ -n "$USERNAME" ]; then
     if ! id "$USERNAME" &>/dev/null; then
@@ -13,9 +14,16 @@ fi
 
 mkdir -p /home/runner/files /home/runner/projects /home/runner/.config /home/runner/tmp
 
-# Activate Python venv
+# Python venv + permanent PEP 668 bypass
 if [ -f /home/runner/.venv/bin/activate ]; then
     source /home/runner/.venv/bin/activate
+fi
+mkdir -p /home/runner/.config/pip
+if [ ! -f /home/runner/.config/pip/pip.conf ]; then
+    cat > /home/runner/.config/pip/pip.conf << 'PIPCONF'
+[global]
+break-system-packages = true
+PIPCONF
 fi
 
 # Kill any leftover processes from previous sessions

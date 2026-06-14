@@ -22,6 +22,7 @@ export PATH="/home/runner/.venv/bin:/home/runner/node_modules/.bin:/usr/local/sb
 export HOME="$SANDBOX_HOME"
 export SHELL="/bin/bash"
 export TERM="xterm-256color"
+export PIP_REQUIRE_VIRTUALENV=false
 export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]sandbox\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
 
 # Activate Python venv

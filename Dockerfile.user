@@ -5,6 +5,7 @@ ENV HOME=/home/runner
 ENV SHELL=/bin/bash
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
+ENV PIP_REQUIRE_VIRTUALENV=false
 
 # Basic system tools + dev packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -18,14 +19,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-pip python3-venv python3-dev \
     nodejs npm \
     php-cli php-common php-mbstring php-curl php-xml php-zip \
-    lsb-release gnupg \
+    lsb-release gnupg lsof \
     && rm -rf /var/lib/apt/lists/*
 
-# Python: symlink, pip upgrade, PEP 668 bypass
+# Python: symlinks, pip upgrade, PEP 668 permanent bypass
 RUN ln -sf /usr/bin/python3 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip
-RUN python3 -m pip install --upgrade pip setuptools wheel --break-system-packages 2>/dev/null; \
-    python3 -m pip install --upgrade pip setuptools wheel 2>/dev/null || true
+RUN python3 -m pip install --upgrade pip setuptools wheel --break-system-packages 2>/dev/null || true
+RUN mkdir -p /home/runner/.config/pip && \
+    echo -e "[global]\nbreak-system-packages = true" > /home/runner/.config/pip/pip.conf
 
 # Install cloudflared
 RUN curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared && \
@@ -37,8 +39,12 @@ RUN npm install -g yarn pnpm localtunnel 2>/dev/null || true
 # Create runner user
 RUN groupadd -g 1000 runner && \
     useradd -m -u 1000 -g runner -d /home/runner -s /bin/bash runner && \
-    mkdir -p /home/runner/projects /home/runner/tmp /home/runner/.venv && \
+    mkdir -p /home/runner/projects /home/runner/tmp /home/runner/.venv /home/runner/.config/pip && \
     chown -R runner:runner /home/runner
+
+# Copy pip config to runner home
+RUN cp /home/runner/.config/pip/pip.conf /home/runner/.config/pip/pip.conf && \
+    chown runner:runner /home/runner/.config/pip/pip.conf
 
 # Sudoers: allow package management for runner
 RUN echo "runner ALL=(ALL) NOPASSWD: /usr/bin/apt, /usr/bin/apt-get, /usr/bin/dpkg, /usr/bin/pip*, /usr/bin/npm*, /usr/bin/node*, /usr/local/bin/cloudflared" > /etc/sudoers.d/runner
@@ -50,8 +56,11 @@ WORKDIR /home/runner
 RUN python3 -m venv /home/runner/.venv && \
     /home/runner/.venv/bin/pip install --upgrade pip setuptools wheel
 
-# Auto-activate venv in bashrc
+# Auto-activate venv + pip config + PATH in bashrc
 RUN echo 'source /home/runner/.venv/bin/activate 2>/dev/null' >> /home/runner/.bashrc && \
-    echo 'export PATH="/home/runner/.venv/bin:$PATH"' >> /home/runner/.bashrc
+    echo 'export PATH="/home/runner/.venv/bin:$PATH"' >> /home/runner/.bashrc && \
+    echo 'export PIP_REQUIRE_VIRTUALENV=false' >> /home/runner/.bashrc && \
+    echo 'alias pip="pip --break-system-packages"' >> /home/runner/.bashrc && \
+    echo 'alias pip3="pip3 --break-system-packages"' >> /home/runner/.bashrc
 
 CMD ["/bin/bash", "--login"]
