@@ -151,7 +151,7 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
     isolated: false,
   };
 
-  const workDir = cwd || (isWindows
+  let workDir = cwd || (isWindows
     ? process.env.USERPROFILE || "C:\\"
     : "/home/runner");
 
@@ -219,6 +219,7 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
   const { id: sandboxId, homeDir } = sandboxManager.ensureUserSandbox(userId);
   session.sandboxId = sandboxId;
   session.sandboxHome = homeDir;
+  workDir = homeDir;
   session.isolated = true;
 
   if (!ptyModule) {
