@@ -32,6 +32,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Create python → python3 symlink (Debian only has python3 package)
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+
 # Install cloudflared (optional — ignore failure)
 RUN curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared 2>/dev/null && \
     chmod +x /usr/local/bin/cloudflared 2>/dev/null || echo "cloudflared download skipped"
