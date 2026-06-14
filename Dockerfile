@@ -32,9 +32,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install cloudflared
-RUN curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared && \
-    chmod +x /usr/local/bin/cloudflared
+# Install cloudflared (optional — ignore failure)
+RUN curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared 2>/dev/null && \
+    chmod +x /usr/local/bin/cloudflared 2>/dev/null || echo "cloudflared download skipped"
 
 RUN mkdir -p /home/runner && chmod 777 /home/runner
 RUN python3 -m venv /opt/venv
@@ -51,8 +51,8 @@ RUN echo -e "[global]\nbreak-system-packages = true\nrequire-virtualenv = false"
     echo -e "[global]\nbreak-system-packages = true" > /home/runner/.config/pip/pip.conf && \
     chmod -R 777 /home/runner/.config/pip
 
-# Upgrade pip to latest (supports --break-system-packages)
-RUN pip install --upgrade pip setuptools wheel 2>&1
+# Upgrade pip to latest (supports --break-system-packages); || true avoids blocking build
+RUN pip install --upgrade pip setuptools wheel || true
 
 # Create runner user with sudo for apt/package management
 RUN groupadd -g 1000 runner 2>/dev/null; \
