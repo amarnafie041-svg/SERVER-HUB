@@ -62,11 +62,11 @@ function createHomeDir(userId?: string, username?: string): string {
   fs.mkdirSync(pipDir, { recursive: true });
   fs.writeFileSync(path.join(pipDir, "pip.conf"), "[global]\nbreak-system-packages = true\n", "utf8");
 
-  // bin/pip wrapper for systems where alias doesn't expand
+  // bin/pip wrapper — auto-detect --break-system-packages support
   const binDir = path.join(baseDir, "bin");
   fs.mkdirSync(binDir, { recursive: true });
-  fs.writeFileSync(path.join(binDir, "pip"), '#!/bin/bash\nexec /usr/bin/pip --break-system-packages "$@"\n', "utf8");
-  fs.writeFileSync(path.join(binDir, "pip3"), '#!/bin/bash\nexec /usr/bin/pip3 --break-system-packages "$@"\n', "utf8");
+  fs.writeFileSync(path.join(binDir, "pip"), '#!/bin/bash\nif pip --break-system-packages --version >/dev/null 2>&1; then\n  exec /usr/bin/pip --break-system-packages "$@"\nelse\n  exec /usr/bin/pip "$@"\nfi\n', "utf8");
+  fs.writeFileSync(path.join(binDir, "pip3"), '#!/bin/bash\nif pip3 --break-system-packages --version >/dev/null 2>&1; then\n  exec /usr/bin/pip3 --break-system-packages "$@"\nelse\n  exec /usr/bin/pip3 "$@"\nfi\n', "utf8");
   try { fs.chmodSync(path.join(binDir, "pip"), 0o755); } catch {}
   try { fs.chmodSync(path.join(binDir, "pip3"), 0o755); } catch {}
 
@@ -80,6 +80,14 @@ export PIP_REQUIRE_VIRTUALENV=false
 export PIP_CONFIG_FILE="${baseDir}/.config/pip/pip.conf"
 export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]user_${name}\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
 cd "${baseDir}" || exit 1
+
+# Upgrade pip to latest (supports --break-system-packages)
+pip3 install --upgrade pip 2>/dev/null || true
+# Ensure pip.conf exists
+mkdir -p "${baseDir}/.config/pip" 2>/dev/null
+if [ ! -f "${baseDir}/.config/pip/pip.conf" ]; then
+  echo -e "[global]\nbreak-system-packages = true" > "${baseDir}/.config/pip/pip.conf"
+fi
 ulimit -S -t 300 2>/dev/null
 ulimit -S -f 102400 2>/dev/null
 ulimit -S -n 2048 2>/dev/null
