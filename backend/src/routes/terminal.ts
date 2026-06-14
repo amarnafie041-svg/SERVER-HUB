@@ -216,7 +216,7 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
     }
   }
 
-  const { id: sandboxId, homeDir } = sandboxManager.ensureUserSandbox(userId);
+  const { id: sandboxId, homeDir } = sandboxManager.ensureUserSandbox(userId, username);
   session.sandboxId = sandboxId;
   session.sandboxHome = homeDir;
   workDir = homeDir;

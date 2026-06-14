@@ -47,10 +47,10 @@ function createSandboxDirs(baseDir: string): void {
   }
 }
 
-function createHomeDir(userId?: string): string {
+function createHomeDir(userId?: string, username?: string): string {
   const id = generateId();
-  const userPart = userId ? sanitizeUserId(userId) : "unknown";
-  const baseDir = path.resolve("/home/runner", `user_${userPart}`);
+  const name = username ? sanitizeUserId(username) : (userId ? sanitizeUserId(userId) : "unknown");
+  const baseDir = path.resolve("/home/runner", `user_${name}`);
   fs.mkdirSync(baseDir, { recursive: true, mode: 0o755 });
   createSandboxDirs(baseDir);
 
@@ -58,8 +58,8 @@ function createHomeDir(userId?: string): string {
   const shellContent = `#!/bin/bash
 export SANDBOX_HOME="${baseDir}"
 export SANDBOX_ID="${id}"
-export SANDBOX_USER="${userPart}"
-export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]user_${userPart}\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
+export SANDBOX_USER="${name}"
+export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]user_${name}\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
 cd "${baseDir}" || exit 1
 ulimit -S -t 30 2>/dev/null
 ulimit -S -f 10240 2>/dev/null
@@ -164,17 +164,17 @@ auto-serve() {
   fs.writeFileSync(bashrc, `# ELMODMEN SANDBOX v6 - .bashrc
 export SANDBOX_HOME="${baseDir}"
 export SANDBOX_ID="${id}"
-export SANDBOX_USER="${userPart}"
+export SANDBOX_USER="${name}"
 source "\${SANDBOX_HOME}/.sandboxrc" 2>/dev/null
-export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]user_${userPart}\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
+export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]user_${name}\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
 `, "utf8");
 
   const zshrc = path.join(baseDir, ".zshrc");
   fs.writeFileSync(zshrc, `export SANDBOX_HOME="${baseDir}"
 export SANDBOX_ID="${id}"
-export SANDBOX_USER="${userPart}"
+export SANDBOX_USER="${name}"
 source "\${SANDBOX_HOME}/.sandboxrc" 2>/dev/null
-PROMPT='%F{46}┌──(%F{226}user_${userPart}%F{46}㉿%F{226}serverhub%F{46})-[%F{87}%~%F{46}]%f
+PROMPT='%F{46}┌──(%F{226}user_${name}%F{46}㉿%F{226}serverhub%F{46})-[%F{87}%~%F{46}]%f
 %F{46}└─%f$ '
 RPROMPT=''
 `, "utf8");
@@ -217,9 +217,9 @@ export const sandboxManager = {
     return true;
   },
 
-  createSandbox(userId?: string): { id: string; homeDir: string } {
+  createSandbox(userId?: string, username?: string): { id: string; homeDir: string } {
     const id = generateId();
-    const homeDir = createHomeDir(userId);
+    const homeDir = createHomeDir(userId, username);
     const sandbox: Sandbox = { id, homeDir, process: null, created: new Date(), lastActivity: new Date() };
     sandboxes.set(id, sandbox);
     if (userId) {
@@ -229,7 +229,7 @@ export const sandboxManager = {
     return { id, homeDir };
   },
 
-  ensureUserSandbox(userId: string): { id: string; homeDir: string } {
+  ensureUserSandbox(userId: string, username?: string): { id: string; homeDir: string } {
     const existing = userSandboxes.get(userId);
     if (existing) {
       const sandbox = sandboxes.get(existing.id);
@@ -239,7 +239,7 @@ export const sandboxManager = {
       }
       userSandboxes.delete(userId);
     }
-    const result = this.createSandbox(userId);
+    const result = this.createSandbox(userId, username);
     userSandboxes.set(userId, { id: result.id, homeDir: result.homeDir });
     logger.info({ userId, id: result.id, homeDir: result.homeDir }, "User sandbox created");
     return result;
