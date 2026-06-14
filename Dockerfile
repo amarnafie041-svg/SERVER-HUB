@@ -37,22 +37,29 @@ RUN curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/downloa
     chmod +x /usr/local/bin/cloudflared 2>/dev/null || echo "cloudflared download skipped"
 
 RUN mkdir -p /home/runner && chmod 777 /home/runner
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
 
-# PEP 668 nuclear fix: delete the externally-managed marker file(s)
-RUN rm -f /usr/lib/python3*/EXTERNALLY-MANAGED 2>/dev/null; \
-    rm -f /usr/lib/python3*/site-packages/externally-managed* 2>/dev/null; \
+# PEP 668 nuclear fix: delete the externally-managed marker file(s) — for ALL Python versions
+RUN find /usr/lib/python3* -name "EXTERNALLY-MANAGED" -delete 2>/dev/null; \
+    find /usr/lib/python3* -path "*/site-packages/externally-managed*" -delete 2>/dev/null; \
     echo "EXTERNALLY-MANAGED files deleted"
 
-# System-wide pip.conf with break-system-packages (read by pip at /etc/pip.conf)
-RUN printf "[global]\nbreak-system-packages = true\nrequire-virtualenv = false\n" > /etc/pip.conf && \
+# System-wide pip.conf with break-system-packages
+RUN printf "[global]\nrequire-virtualenv = false\nbreak-system-packages = true\n" > /etc/pip.conf && \
     mkdir -p /home/runner/.config/pip && \
     printf "[global]\nbreak-system-packages = true\n" > /home/runner/.config/pip/pip.conf && \
     chmod -R 777 /home/runner/.config/pip
 
-# Upgrade pip to latest (supports --break-system-packages); || true avoids blocking build
-RUN pip install --upgrade pip setuptools wheel || true
+# Create python3 → python symlink
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+RUN ln -sf /usr/bin/pip3 /usr/bin/pip
+
+# Upgrade SYSTEM pip (before venv) — no --break-system-packages needed, EXTERNALLY-MANAGED is gone
+RUN python3 -m pip install --upgrade pip setuptools wheel 2>&1
+
+# Create venv with upgraded pip
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN /opt/venv/bin/pip install --upgrade pip setuptools wheel 2>&1 || true
 
 # Create runner user with sudo for apt/package management
 RUN groupadd -g 1000 runner 2>/dev/null; \
