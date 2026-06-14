@@ -47,22 +47,14 @@ function createSandboxDirs(baseDir: string): void {
   }
 }
 
-function createHomeDir(userId?: string, username?: string): string {
-  const id = generateId();
-  const name = username ? sanitizeUserId(username) : (userId ? sanitizeUserId(userId) : "unknown");
-  const homeRoot = isWindows
-    ? (process.env.USERPROFILE || "C:\\Users\\Default")
-    : "/home/runner";
-  const baseDir = path.resolve(homeRoot, `user_${name}`);
+function writeSandboxConfigs(baseDir: string, id: string, name: string): void {
   fs.mkdirSync(baseDir, { recursive: true, mode: 0o755 });
   createSandboxDirs(baseDir);
 
-  // pip.conf: PEP 668 bypass
   const pipDir = path.join(baseDir, ".config", "pip");
   fs.mkdirSync(pipDir, { recursive: true });
   fs.writeFileSync(path.join(pipDir, "pip.conf"), "[global]\nbreak-system-packages = true\n", "utf8");
 
-  // bin/ dir: simple pass-through wrappers (NO --break-system-packages — we delete EXTERNALLY-MANAGED)
   const binDir = path.join(baseDir, "bin");
   fs.mkdirSync(binDir, { recursive: true });
   fs.writeFileSync(path.join(binDir, "pip"), '#!/bin/bash\nexec /usr/bin/pip "$@"\n', "utf8");
@@ -373,7 +365,12 @@ export const sandboxManager = {
 
   createSandbox(userId?: string, username?: string): { id: string; homeDir: string } {
     const id = generateId();
-    const homeDir = createHomeDir(userId, username);
+    const name = username ? sanitizeUserId(username) : (userId ? sanitizeUserId(userId) : "unknown");
+    const homeRoot = isWindows
+      ? (process.env.USERPROFILE || "C:\\Users\\Default")
+      : "/home/runner";
+    const homeDir = path.resolve(homeRoot, `user_${name}`);
+    writeSandboxConfigs(homeDir, id, name);
     const sandbox: Sandbox = { id, homeDir, process: null, created: new Date(), lastActivity: new Date() };
     sandboxes.set(id, sandbox);
     if (userId) {
@@ -388,7 +385,9 @@ export const sandboxManager = {
     if (existing) {
       const sandbox = sandboxes.get(existing.id);
       if (sandbox) {
-        logger.info({ userId, id: existing.id, homeDir: existing.homeDir }, "Reusing existing user sandbox");
+        logger.info({ userId, id: existing.id, homeDir: existing.homeDir }, "Reusing existing user sandbox, refreshing configs");
+        const name = username ? sanitizeUserId(username) : "unknown";
+        writeSandboxConfigs(existing.homeDir, existing.id, name);
         return { id: existing.id, homeDir: existing.homeDir };
       }
       userSandboxes.delete(userId);
