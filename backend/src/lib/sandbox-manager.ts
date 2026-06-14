@@ -92,7 +92,7 @@ if [ ! -f "${baseDir}/.config/pip/pip.conf" ]; then
 fi
 # Create python → python3 symlink if missing
 if ! command -v python &>/dev/null; then
-  ln -sf /usr/bin/python3 "${HOME}/bin/python" 2>/dev/null || true
+  ln -sf /usr/bin/python3 "\${HOME}/bin/python" 2>/dev/null || true
 fi
 ulimit -S -t 300 2>/dev/null
 ulimit -S -f 102400 2>/dev/null
