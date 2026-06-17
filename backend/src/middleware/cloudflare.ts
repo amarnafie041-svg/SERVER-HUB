@@ -78,7 +78,7 @@ export function cloudflareSecurityHeaders(req: Request, res: Response, next: Nex
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "connect-src 'self' ws: wss: https://integrate.api.nvidia.com",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://i.ibb.co",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

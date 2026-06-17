@@ -34,10 +34,13 @@ export function Layout({ children, path, navigate }: LayoutProps) {
     { href: "/", label: t("dashboard"), icon: Activity },
     { href: "/terminal", label: t("terminal"), icon: TerminalSquare },
     { href: "/editor", label: t("editor"), icon: Code },
-    { href: "/files", label: t("files"), icon: Folder },
     { href: "/ai", label: t("ai_chat"), icon: Bot },
     { href: "/commands", label: t("commands"), icon: BookOpen },
   ];
+
+  const adminNavItemsFromMain = user?.role === "admin" ? [
+    { href: "/files", label: t("files"), icon: Folder },
+  ] : [];
 
   const adminNavItems = user?.role === "admin" ? [
     { href: "/admin", label: t("admin"), icon: Shield },
@@ -88,6 +91,9 @@ export function Layout({ children, path, navigate }: LayoutProps) {
 
       <div className="flex-1 py-3 flex flex-col gap-0.5 px-2 overflow-y-auto min-h-0 scrollbar-none">
         {mainNavItems.map((item) => <NavItem key={item.href} {...item} onClick={onNav} />)}
+        {adminNavItemsFromMain.length > 0 && (
+          <>{adminNavItemsFromMain.map((item) => <NavItem key={item.href} {...item} onClick={onNav} />)}</>
+        )}
         {adminNavItems.length > 0 && (
           <>
             {!collapsed && <div className="px-3 pt-4 pb-1"><span className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest">Admin</span></div>}
@@ -139,7 +145,7 @@ export function Layout({ children, path, navigate }: LayoutProps) {
   );
 
   return (
-    <div className="flex h-screen w-full overflow-hidden text-foreground"
+    <div className={`flex h-screen w-full overflow-hidden text-foreground ${isMobile ? "rounded-t-[24px]" : ""}`}
       style={{ background: "var(--background)", direction: isRTL ? "rtl" : "ltr" }}>
       {!isMobile && (
         <div className="flex-shrink-0 border-r transition-all duration-300 ease-in-out"
@@ -149,9 +155,9 @@ export function Layout({ children, path, navigate }: LayoutProps) {
       )}
 
       {isMobile && (
-        <div className="fixed top-0 left-0 right-0 h-14 z-30 animate-slideDown border-b"
-          style={{ background: "var(--sidebar)", borderColor: "var(--sidebar-border)", boxShadow: "0 4px 30px rgba(0,0,0,0.3)" }}>
-          <div className="flex items-center justify-between px-4 h-full">
+        <div className="fixed top-0 left-0 right-0 z-30 animate-slideDown border-b"
+          style={{ paddingTop: "env(safe-area-inset-top, 0px)", background: "var(--sidebar)", borderColor: "var(--sidebar-border)", boxShadow: "0 4px 30px rgba(0,0,0,0.3)" }}>
+          <div className="flex items-center justify-between px-4 h-14">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden animate-float"
                 style={{ border: "1px solid rgba(139,92,246,0.3)" }}>
@@ -206,7 +212,7 @@ export function Layout({ children, path, navigate }: LayoutProps) {
         </div>
       )}
 
-      <div className={`flex-1 flex flex-col min-w-0 overflow-hidden ${isMobile ? "pt-14 pb-16" : ""}`}>
+      <div className={`flex-1 flex flex-col min-w-0 overflow-hidden ${isMobile ? "pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pb-16" : ""}`}>
         <main className="flex-1 overflow-auto h-full">{children}</main>
       </div>
 
@@ -214,25 +220,25 @@ export function Layout({ children, path, navigate }: LayoutProps) {
         <div className="fixed bottom-0 left-0 right-0 h-16 z-30 border-t animate-slideUp"
           style={{ background: "var(--sidebar)", borderColor: "var(--sidebar-border)", boxShadow: "0 -4px 30px rgba(0,0,0,0.3)" }}>
           <div className="flex items-center justify-around px-1 h-full">
-            {mainNavItems.slice(0, 5).map((item) => (
-              <div key={item.href} onClick={() => navigate(item.href)}
-                className={`flex flex-col items-center justify-center w-14 h-full gap-0.5 cursor-pointer transition-all relative ${
-                  isActive(item.href) ? "text-accent" : "text-zinc-500 hover:text-zinc-300"
-                }`}>
-                {isActive(item.href) && (
-                  <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-accent" />
-                )}
-                <item.icon className={`w-5 h-5 transition-all duration-200 ${isActive(item.href) ? "scale-110 drop-shadow-[0_0_6px_rgba(168,85,247,0.5)]" : ""}`} />
-                <span className={`text-[9px] font-medium ${isActive(item.href) ? "font-bold" : ""}`}>{item.label}</span>
-              </div>
-            ))}
-            <div onClick={() => navigate("/commands")}
-              className={`flex flex-col items-center justify-center w-14 h-full gap-0.5 cursor-pointer transition-all ${
-                isActive("/commands") ? "text-accent" : "text-zinc-500 hover:text-zinc-300"
-              }`}>
-              <BookOpen className={`w-5 h-5 transition-all duration-200 ${isActive("/commands") ? "scale-110 drop-shadow-[0_0_6px_rgba(168,85,247,0.5)]" : ""}`} />
-              <span className={`text-[9px] font-medium ${isActive("/commands") ? "font-bold" : ""}`}>{t("commands")}</span>
-            </div>
+            {(() => {
+              const mobileItems = [
+                ...mainNavItems.slice(0, 4),
+                ...(user?.role === "admin" ? [{ href: "/files", label: t("files"), icon: Folder }] : []),
+                { href: "/commands", label: t("commands"), icon: BookOpen },
+              ];
+              return mobileItems.map((item) => (
+                <div key={item.href} onClick={() => navigate(item.href)}
+                  className={`flex flex-col items-center justify-center w-14 h-full gap-0.5 cursor-pointer transition-all relative ${
+                    isActive(item.href) ? "text-accent" : "text-zinc-500 hover:text-zinc-300"
+                  }`}>
+                  {isActive(item.href) && (
+                    <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-accent" />
+                  )}
+                  <item.icon className={`w-5 h-5 transition-all duration-200 ${isActive(item.href) ? "scale-110 drop-shadow-[0_0_6px_rgba(168,85,247,0.5)]" : ""}`} />
+                  <span className={`text-[9px] font-medium ${isActive(item.href) ? "font-bold" : ""}`}>{item.label}</span>
+                </div>
+              ));
+            })()}
           </div>
         </div>
       )}

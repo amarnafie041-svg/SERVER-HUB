@@ -6,7 +6,7 @@ import { execFile, execSync } from "child_process";
 import { promisify } from "util";
 import busboy from "busboy";
 import { logger } from "../lib/logger";
-import { authenticate } from "../middleware/authenticate";
+import { authenticate, requireAdmin } from "../middleware/authenticate";
 import { dockerManager } from "../lib/docker-manager";
 import { sandboxManager } from "../lib/sandbox-manager";
 
@@ -140,7 +140,7 @@ async function ensureUserIsolation(userId: string, username: string): Promise<vo
   }
 }
 
-router.get("/files/list", authenticate, async (req: Request, res: Response): Promise<void> => {
+router.get("/files/list", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -180,7 +180,7 @@ router.get("/files/list", authenticate, async (req: Request, res: Response): Pro
   }
 });
 
-router.get("/files/read", authenticate, async (req: Request, res: Response): Promise<void> => {
+router.get("/files/read", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -221,7 +221,7 @@ router.get("/files/read", authenticate, async (req: Request, res: Response): Pro
   }
 });
 
-router.post("/files/write", authenticate, async (req: Request, res: Response): Promise<void> => {
+router.post("/files/write", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -251,7 +251,7 @@ router.post("/files/write", authenticate, async (req: Request, res: Response): P
   }
 });
 
-router.delete("/files/delete", authenticate, async (req: Request, res: Response): Promise<void> => {
+router.delete("/files/delete", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -283,7 +283,7 @@ router.delete("/files/delete", authenticate, async (req: Request, res: Response)
   }
 });
 
-router.post("/files/rename", authenticate, async (req: Request, res: Response): Promise<void> => {
+router.post("/files/rename", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -315,7 +315,7 @@ router.post("/files/rename", authenticate, async (req: Request, res: Response): 
   }
 });
 
-router.post("/files/mkdir", authenticate, async (req: Request, res: Response): Promise<void> => {
+router.post("/files/mkdir", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -341,7 +341,7 @@ router.post("/files/mkdir", authenticate, async (req: Request, res: Response): P
   }
 });
 
-router.post("/files/upload", authenticate, async (req: Request, res: Response): Promise<void> => {
+router.post("/files/upload", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -447,7 +447,7 @@ router.post("/files/upload", authenticate, async (req: Request, res: Response): 
   }
 });
 
-router.get("/files/search", authenticate, async (req: Request, res: Response): Promise<void> => {
+router.get("/files/search", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -494,7 +494,7 @@ router.get("/files/search", authenticate, async (req: Request, res: Response): P
   }
 });
 
-router.post("/files/extract", authenticate, async (req: Request, res: Response): Promise<void> => {
+router.post("/files/extract", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -543,6 +543,79 @@ router.post("/files/extract", authenticate, async (req: Request, res: Response):
   } catch (err: any) {
     logger.error({ err }, "Failed to extract archive");
     res.status(500).json({ success: false, message: err.message || "Failed to extract archive" });
+  }
+});
+
+router.post("/files/compress", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const username = req.user?.username || "";
+    const userId = req.user?.userId || "";
+    await ensureUserIsolation(userId, username);
+    const { path: targetPath, archiveName } = req.body;
+    if (!targetPath) { res.status(400).json({ success: false, message: "Path required" }); return; }
+
+    if (dockerManager.isAvailable) {
+      const archiveNameSafe = (archiveName || targetPath.split("/").pop() || "archive") + ".tar.gz";
+      const dest = `/tmp/${archiveNameSafe}`;
+      const ok = await dockerManager.execInContainer(username, ["tar", "-czf", dest, "-C", targetPath.replace(/\/[^/]+$/, ""), targetPath.split("/").pop() || "."]);
+      if (ok) {
+        res.json({ success: true, archivePath: dest });
+        return;
+      }
+    }
+
+    const resolved = resolveUserPath(targetPath, userId);
+    if (!resolved) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
+    if (!fs.existsSync(resolved)) { res.status(404).json({ success: false, message: "Path not found" }); return; }
+
+    const baseName = archiveName || path.basename(resolved);
+    const archivePath = path.join(path.dirname(resolved), `${baseName}.tar.gz`);
+    const parentDir = path.dirname(resolved);
+    const targetName = path.basename(resolved);
+
+    await execFileAsync("tar", ["-czf", archivePath, "-C", parentDir, targetName]);
+
+    res.json({ success: true, archivePath });
+  } catch (err: any) {
+    logger.error({ err }, "Failed to compress file");
+    res.status(500).json({ success: false, message: err.message || "Compression failed" });
+  }
+});
+
+router.get("/files/download", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const username = req.user?.username || "";
+    const userId = req.user?.userId || "";
+    await ensureUserIsolation(userId, username);
+    const filePath = req.query.path as string;
+    if (!filePath) { res.status(400).json({ error: "Path required" }); return; }
+
+    if (dockerManager.isAvailable) {
+      const content = await dockerManager.execFileRead(username, filePath);
+      if (content !== null) {
+        const name = filePath.split("/").pop() || "file";
+        res.setHeader("Content-Disposition", `attachment; filename="${name}"`);
+        res.setHeader("Content-Type", "application/octet-stream");
+        res.send(content);
+        return;
+      }
+    }
+
+    const resolved = resolveUserPath(filePath, userId);
+    if (!resolved) { res.status(400).json({ error: "Invalid path" }); return; }
+    if (!fs.existsSync(resolved)) { res.status(404).json({ error: "File not found" }); return; }
+    const stat = fs.statSync(resolved);
+    if (stat.isDirectory()) { res.status(400).json({ error: "Cannot download directory" }); return; }
+
+    const name = path.basename(resolved);
+    res.setHeader("Content-Disposition", `attachment; filename="${name}"`);
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.setHeader("Content-Length", stat.size);
+    const stream = fs.createReadStream(resolved);
+    stream.pipe(res);
+  } catch (err) {
+    logger.error({ err }, "Failed to download file");
+    res.status(500).json({ error: "Download failed" });
   }
 });
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+﻿import { useEffect, useRef, useState, useCallback } from "react";
 import { Terminal as XTerm } from "xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -33,7 +33,7 @@ interface TabResources {
   reconnectAttempts: number;
 }
 
-const MAX_RECONNECT = 15;
+const MAX_RECONNECT = 99999;
 const STORED_SESSION_KEY = "sh_terminal_session";
 
 const QUICK_CMDS = [
@@ -67,21 +67,42 @@ const VIRTUAL_KEYS = [
 const S = (n: number) => " ".repeat(n);
 
 const DESKTOP_BANNER = [
-  "${ylw}$ ${rst}",
+  "${bold}${grn}  ███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗",
+  "${bold}${grn}  ██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║",
+  "${bold}${grn}  █████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║",
+  "${bold}${grn}  ██╔══╝  ██║     ██║╚██╔╝██║██║   ██║██║  ██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║",
+  "${bold}${grn}  ███████╗███████╗██║ ╚═╝ ██║╚██████╔╝██████╔╝██║ ╚═╝ ██║███████╗██║ ╚████║",
+  "${bold}${grn}  ╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝",
+  "",
+  "${bold}${g(46)}  ══════════════════════════════════════════════════════════════════${rst}",
+  "${bold}${g(46)}  ✓ CONNECTED  ${rst}${dim}│${rst}  ${g(226)}⚡ EMD VPS ${rst}${dim}│${rst}  ${g(51)}🔒 SECURE ${rst}${dim}│${rst}  ${g(201)}🚀 READY${rst}",
+  "${bold}${g(46)}  ══════════════════════════════════════════════════════════════════${rst}",
 ].join("\r\n");
 
 const MEDIUM_BANNER = [
-  "${ylw}$ ${rst}",
+  "${bold}${ylw}  ███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗",
+  "${bold}${ylw}  ██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║",
+  "${bold}${ylw}  █████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║",
+  "${bold}${ylw}  ██╔══╝  ██║     ██║╚██╔╝██║██║   ██║██║  ██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║",
+  "${bold}${ylw}  ███████╗███████╗██║ ╚═╝ ██║╚██████╔╝██████╔╝██║ ╚═╝ ██║███████╗██║ ╚████║",
+  "${bold}${ylw}  ╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝",
+  "",
+  "${bold}${g(46)}  ═══════════════════════════════════════════════════════${rst}",
+  "${bold}${g(46)}✓ CONNECTED ${rst}${g(226)}EMD VPS ${rst}${g(51)}SECURE ${rst}${g(201)}READY${rst}",
+  "${bold}${g(46)}  ═══════════════════════════════════════════════════════${rst}",
 ].join("\r\n");
 
 const MOBILE_BANNER = [
-  "${bold}${ylw}  _____ _     __  __  ___  ____  __  __ _____ _   _ ${rst}",
-  "${bold}${ylw} | ____| |   |  \\/  |/ _ \\|  _ \\|  \\/  | ____| \\ | |${rst}",
-  "${bold}${ylw} |  _| | |   | |\\/| | | | | | | | |\\/| |  _| |  \\| |${rst}",
-  "${bold}${ylw} | |___| |___| |  | | |_| | |_| | |  | | |___| |\\  |${rst}",
-  "${bold}${ylw} |_____|_____|_|  |_|\\___/|____/|_|  |_|_____|_| \\_|${rst}",
+  "${bold}${ylw}  ███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗",
+  "${bold}${ylw}  ██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║",
+  "${bold}${ylw}  █████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║",
+  "${bold}${ylw}  ██╔══╝  ██║     ██║╚██╔╝██║██║   ██║██║  ██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║",
+  "${bold}${ylw}  ███████╗███████╗██║ ╚═╝ ██║╚██████╔╝██████╔╝██║ ╚═╝ ██║███████╗██║ ╚████║",
+  "${bold}${ylw}  ╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝",
   "",
-  "${ylw}$ ${rst}",
+  "${bold}${g(46)}  ═══════════════════════════════════════════════════════${rst}",
+  "${bold}${g(46)}✓ CONNECTED ${rst}${g(226)}EMD VPS ${rst}${g(51)}SECURE ${rst}${g(201)}READY${rst}",
+  "${bold}${g(46)}  ═══════════════════════════════════════════════════════${rst}",
 ].join("\r\n");
 
 export default function TerminalPage() {
@@ -180,8 +201,6 @@ export default function TerminalPage() {
     return `${wsBase}/api/terminal/ws/${sessionId}`;
   };
 
-  const welcomeShown = useRef<Record<string, boolean>>({});
-
   const getRes = (tabId: string): TabResources => {
     if (!resources.current[tabId])
       resources.current[tabId] = {
@@ -212,7 +231,9 @@ export default function TerminalPage() {
       .replace(/\$\{dim\}/g, dim)
       .replace(/\$\{ylw\}/g, ylw)
       .replace(/\$\{g\((\d+)\)\}/g, (_, c) => g(parseInt(c)));
-    term.write(banner);
+    const bannerLines = raw.split('\r\n').length;
+    const scrollStart = bannerLines + 1;
+    term.write('\x1b[r' + banner + '\r\n\x1b[' + scrollStart + ';r\x1b[' + scrollStart + ';1H');
   };
 
   const sendToTerminal = (text: string) => {
@@ -243,7 +264,7 @@ export default function TerminalPage() {
       if (res.destroyed) { ws.close(); return; }
       res.reconnectAttempts = 0;
       setStatus(tabId, "connected");
-      const { fitAddon } = getRes(tabId);
+      const { fitAddon, term } = getRes(tabId);
       if (fitAddon) {
         try {
           fitAddon.fit();
@@ -251,6 +272,7 @@ export default function TerminalPage() {
           if (dims) ws.send(JSON.stringify({ type: "resize", cols: dims.cols, rows: dims.rows }));
         } catch {}
       }
+      if (term) { term.clear(); writeElmodmenBanner(term); }
       res.heartbeat = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
       }, 25000);
@@ -338,6 +360,7 @@ export default function TerminalPage() {
       if (res.destroyed || !res.term) { resizeObs.disconnect(); return; }
       try {
         fitAddon.fit();
+        res.term.write('\x1b[r\x1b[11;r\x1b[11;1H');
         const ws = res.ws;
         if (ws?.readyState === WebSocket.OPEN) {
           const dims = fitAddon.proposeDimensions();
@@ -351,11 +374,8 @@ export default function TerminalPage() {
       const { ws } = getRes(tabId);
       if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "input", data }));
     });
-    if (!welcomeShown.current[tabId]) {
-      welcomeShown.current[tabId] = true;
-      term.clear();
-      writeElmodmenBanner(term);
-    }
+    term.clear();
+    writeElmodmenBanner(term);
     term.onSelectionChange(() => {
       const sel = term.getSelection();
       if (sel) navigator.clipboard.writeText(sel).catch(() => {});
@@ -501,7 +521,6 @@ export default function TerminalPage() {
     if (res.resizeObserver) res.resizeObserver.disconnect();
     if (res.term) res.term.dispose();
     delete resources.current[activeTabId];
-    welcomeShown.current[activeTabId] = false;
     setStatuses((prev) => ({ ...prev, [activeTabId]: "connecting" }));
     setTimeout(() => {
       const el = containerRefs.current[activeTabId];

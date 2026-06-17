@@ -34,17 +34,18 @@ app.use(pinoHttp({
 
 const corsOrigin = process.env.CORS_ORIGIN;
 const cfDomain = process.env.CLOUDFLARE_DOMAIN;
-let allowedOrigins: (string | boolean)[] = [];
+let allowedOrigins: string[] = [];
 if (corsOrigin) {
   allowedOrigins = corsOrigin.split(",").map(s => s.trim());
-  allowedOrigins.push("http://localhost:5180");
-  allowedOrigins.push("http://localhost:3001");
   if (cfDomain) allowedOrigins.push(cfDomain);
-} else {
-  allowedOrigins = [true];
 }
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, cb) => {
+    if (allowedOrigins.length === 0) { cb(null, true); return; }
+    if (!origin || allowedOrigins.includes(origin)) { cb(null, origin || true); return; }
+    if (origin === "null" || origin.startsWith("http://localhost") || origin.startsWith("https://localhost") || origin.startsWith("capacitor://") || origin.startsWith("file://")) { cb(null, origin); return; }
+    cb(null, false);
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "x-upload-path"],
   credentials: true,

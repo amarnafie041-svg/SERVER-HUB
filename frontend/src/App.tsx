@@ -80,7 +80,7 @@ function AppRoutes() {
       case "/": return <Dashboard />;
       case "/terminal": return <TerminalPage />;
       case "/editor": return <EditorPage />;
-      case "/files": return <FilesPage />;
+      case "/files": return user.role === "admin" ? <FilesPage /> : <Dashboard />;
       case "/ai": return <AIPage />;
       case "/admin": return user.role === "admin" ? <AdminPage /> : <Dashboard />;
       case "/settings": return user.role === "admin" ? <SettingsPage /> : <Dashboard />;

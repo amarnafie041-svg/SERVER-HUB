@@ -141,8 +141,9 @@
 
 @layer base {
   * { @apply border-border; }
-  html, body, #root { height: 100%; margin: 0; padding: 0; }
-  body { @apply font-sans antialiased bg-background text-foreground; }
+  html { height: 100%; margin: 0; padding: 0; }
+  body { min-height: 100%; margin: 0; padding: 0; @apply font-sans antialiased bg-background text-foreground; }
+  #root { height: 100%; }
   input, textarea, select { @apply outline-none; }
   button { @apply cursor-pointer; }
 }

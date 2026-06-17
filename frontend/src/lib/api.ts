@@ -57,6 +57,14 @@ export const api = {
   searchFiles: (query: string) => request<any[]>(`/api/files/search?q=${encodeURIComponent(query)}`),
   extractFile: (path: string, dest?: string) =>
     request<{ success: boolean; files: string[] }>("/api/files/extract", { method: "POST", body: JSON.stringify({ path, dest }) }),
+  compressFile: (path: string, archiveName?: string) =>
+    request<{ success: boolean; archivePath: string }>("/api/files/compress", { method: "POST", body: JSON.stringify({ path, archiveName }) }),
+  downloadFile: (path: string) => {
+    const token = getToken();
+    return fetch(`${BASE}/api/files/download?path=${encodeURIComponent(path)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
 
   sendChatMessage: (model: string, message: string, onChunk?: (chunk: string) => void) => {
     const token = getToken();

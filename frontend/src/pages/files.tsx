@@ -3,7 +3,7 @@ import {
   Folder, FileText, Image, Code,
   ChevronRight, Grid, List, Search, Plus, FolderPlus, MoreVertical,
   Trash2, Edit2, Upload, Home, ArrowLeft, X, Check, Eye,
-  File, FileUp,
+  File, FileUp, FileDown, FileArchive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +67,7 @@ export default function FilesPage() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
   const { t } = useLang();
 
@@ -181,6 +182,61 @@ export default function FilesPage() {
       return null;
     });
   }, []);
+
+  const handleDownload = async (item: any) => {
+    try {
+      const resp = await api.downloadFile(item.path);
+      if (!resp.ok) { toast({ title: "Download failed", variant: "destructive" }); return; }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = item.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "Downloaded", description: item.name });
+    } catch { toast({ title: "Download failed", variant: "destructive" }); }
+    setContextMenu(null);
+  };
+
+  const handleCompress = async (item: any) => {
+    try {
+      const result = await api.compressFile(item.path);
+      if (result.success) {
+        toast({ title: "Compressed", description: "Archive created" });
+        refresh();
+      }
+    } catch (e: any) {
+      toast({ title: "Compression failed", description: e.message, variant: "destructive" });
+    }
+    setContextMenu(null);
+  };
+
+  const handleExtractCtx = async (item: any) => {
+    try {
+      const result = await api.extractFile(item.path);
+      if (result.success) {
+        toast({ title: "Extracted", description: `${result.files?.length || 0} file(s)` });
+        refresh();
+      }
+    } catch (e: any) {
+      toast({ title: "Extraction failed", description: e.message, variant: "destructive" });
+    }
+    setContextMenu(null);
+  };
+
+  const touchHandlers = (item: any) => ({
+    onTouchStart: () => { longPressRef.current = setTimeout(() => { longPressRef.current = null; setContextMenu({ x: 0, y: 0, item }); }, 600); },
+    onTouchMove: () => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } },
+    onTouchEnd: () => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } },
+  });
+
+  const isArchive = (name: string) => {
+    const ext = name.toLowerCase();
+    return ext.endsWith(".zip") || ext.endsWith(".tar.gz") || ext.endsWith(".tgz") || ext.endsWith(".tar");
+  };
 
   const handleUpload = async (files: FileList) => {
     const MAX_SIZE = 50 * 1024 * 1024;
@@ -306,9 +362,9 @@ export default function FilesPage() {
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
             {sorted.map((item) => (
-              <div key={item.path} className="group flex flex-col items-center gap-2 p-3 rounded-xl cursor-pointer transition-all border hover:border-[rgba(139,92,246,0.4)] hover:bg-[#140a24]"
-                style={{ borderColor: "rgba(139,92,246,0.08)", background: "rgba(20,10,36,0.4)" }}
-                onClick={() => handleItemClick(item)} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, item }); }}>
+                <div key={item.path} className="group flex flex-col items-center gap-2 p-3 rounded-xl cursor-pointer transition-all border hover:border-[rgba(139,92,246,0.4)] hover:bg-[#140a24]"
+                  style={{ borderColor: "rgba(139,92,246,0.08)", background: "rgba(20,10,36,0.4)" }}
+                  onClick={() => handleItemClick(item)} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, item }); }} {...touchHandlers(item)}>
                 <FileIcon icon={item.icon} isDir={item.is_dir} size="w-9 h-9" />
                 {renamingPath === item.path ? (
                   <div className="flex items-center gap-1 w-full" onClick={(e) => e.stopPropagation()}>
@@ -328,7 +384,7 @@ export default function FilesPage() {
           <div className="space-y-0.5">
             {sorted.map((item) => (
               <div key={item.path} className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-[#140a24] border border-transparent hover:border-[rgba(139,92,246,0.15)] transition-all group"
-                onClick={() => handleItemClick(item)} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, item }); }}>
+                onClick={() => handleItemClick(item)} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, item }); }} {...touchHandlers(item)}>
                 <FileIcon icon={item.icon} isDir={item.is_dir} size="w-4 h-4" />
                 {renamingPath === item.path ? (
                   <div className="flex items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
@@ -361,7 +417,7 @@ export default function FilesPage() {
       </div>
 
       {contextMenu && (
-        <div className="fixed z-50 min-w-[170px] rounded-xl border py-1.5 shadow-2xl"
+        <div className="fixed z-50 min-w-[180px] rounded-xl border py-1.5 shadow-2xl"
           style={{ top: contextMenu.y, left: contextMenu.x, background: "#140a24", borderColor: "rgba(139,92,246,0.3)" }}
           onMouseLeave={() => setContextMenu(null)}>
           <button onClick={() => { handleItemClick(contextMenu.item); setContextMenu(null); }}
@@ -372,6 +428,21 @@ export default function FilesPage() {
             className="w-full text-left px-4 py-2 text-sm text-zinc-300 hover:bg-white/8 hover:text-white flex items-center gap-2.5 transition-colors">
             <Edit2 className="w-3.5 h-3.5 text-zinc-500" /> {t("rename")}
           </button>
+          <div className="my-1 border-t" style={{ borderColor: "rgba(139,92,246,0.1)" }} />
+          <button onClick={() => { handleDownload(contextMenu.item); }}
+            className="w-full text-left px-4 py-2 text-sm text-zinc-300 hover:bg-white/8 hover:text-white flex items-center gap-2.5 transition-colors">
+            <FileDown className="w-3.5 h-3.5 text-sky-400" /> Download
+          </button>
+          <button onClick={() => { handleCompress(contextMenu.item); }}
+            className="w-full text-left px-4 py-2 text-sm text-zinc-300 hover:bg-white/8 hover:text-white flex items-center gap-2.5 transition-colors">
+            <FileArchive className="w-3.5 h-3.5 text-amber-400" /> Compress
+          </button>
+          {isArchive(contextMenu.item.name) && (
+            <button onClick={() => { handleExtractCtx(contextMenu.item); }}
+              className="w-full text-left px-4 py-2 text-sm text-zinc-300 hover:bg-white/8 hover:text-white flex items-center gap-2.5 transition-colors">
+              <FileUp className="w-3.5 h-3.5 text-green-400" /> Extract
+            </button>
+          )}
           <div className="my-1 border-t" style={{ borderColor: "rgba(139,92,246,0.1)" }} />
           <button onClick={() => handleDelete(contextMenu.item)}
             className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2.5 transition-colors">
