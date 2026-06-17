@@ -93,16 +93,11 @@ const MEDIUM_BANNER = [
 ].join("\r\n");
 
 const MOBILE_BANNER = [
-  "${bold}${ylw}  ███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗",
-  "${bold}${ylw}  ██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║",
-  "${bold}${ylw}  █████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║",
-  "${bold}${ylw}  ██╔══╝  ██║     ██║╚██╔╝██║██║   ██║██║  ██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║",
-  "${bold}${ylw}  ███████╗███████╗██║ ╚═╝ ██║╚██████╔╝██████╔╝██║ ╚═╝ ██║███████╗██║ ╚████║",
-  "${bold}${ylw}  ╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝",
-  "",
-  "${bold}${g(46)}  ═══════════════════════════════════════════════════════${rst}",
-  "${bold}${g(46)}✓ CONNECTED ${rst}${g(226)}EMD VPS ${rst}${g(51)}SECURE ${rst}${g(201)}READY${rst}",
-  "${bold}${g(46)}  ═══════════════════════════════════════════════════════${rst}",
+  "${bold}${g(46)}  ┌────────────────────────┐${rst}",
+  "${bold}${ylw}  │     E L M O D M E N    │${rst}",
+  "${bold}${g(46)}  │  ─────────────────────  │${rst}",
+  "${bold}${g(46)}  │  ✓ CONNECTED    READY  │${rst}",
+  "${bold}${g(46)}  └────────────────────────┘${rst}",
 ].join("\r\n");
 
 export default function TerminalPage() {
@@ -221,6 +216,8 @@ export default function TerminalPage() {
     let raw;
     if (cols >= 56) {
       raw = DESKTOP_BANNER;
+    } else if (cols >= 40) {
+      raw = MEDIUM_BANNER;
     } else {
       raw = MOBILE_BANNER;
     }
@@ -360,7 +357,9 @@ export default function TerminalPage() {
       if (res.destroyed || !res.term) { resizeObs.disconnect(); return; }
       try {
         fitAddon.fit();
-        res.term.write('\x1b[r\x1b[11;r\x1b[11;1H');
+        var b = res.term.cols >= 56 ? DESKTOP_BANNER : res.term.cols >= 40 ? MEDIUM_BANNER : MOBILE_BANNER;
+        var sl = b.split('\r\n').length + 1;
+        res.term.write('\x1b[r\x1b[' + sl + ';r\x1b[' + sl + ';1H');
         const ws = res.ws;
         if (ws?.readyState === WebSocket.OPEN) {
           const dims = fitAddon.proposeDimensions();
