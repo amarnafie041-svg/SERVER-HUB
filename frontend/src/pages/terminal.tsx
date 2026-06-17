@@ -75,17 +75,17 @@ const DESKTOP_BANNER = [
   "${bold}${grn}  ╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝",
   "",
   "${bold}${g(46)}  ══════════════════════════════════════════════════════════════════${rst}",
-  "${bold}${g(46)}  ✓ CONNECTED  ${rst}${dim}│${rst}  ${g(226)}⚡ EMD VPS ${rst}${dim}│${rst}  ${g(51)}🔒 SECURE ${rst}${dim}│${rst}  ${g(201)}🚀 READY${rst}",
+  "${bold}${g(46)}  ✓ CONNECTED  ${rst}${dim}║${rst}  ${g(226)}⚡ EMD VPS ${rst}${dim}║${rst}  ${g(51)}🔒 SECURE ${rst}${dim}║${rst}  ${g(201)}🚀 READY${rst}",
   "${bold}${g(46)}  ══════════════════════════════════════════════════════════════════${rst}",
 ].join("\r\n");
 
 const MEDIUM_BANNER = [
-  "${bold}${ylw}  ███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗",
-  "${bold}${ylw}  ██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║",
-  "${bold}${ylw}  █████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║",
-  "${bold}${ylw}  ██╔══╝  ██║     ██║╚██╔╝██║██║   ██║██║  ██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║",
-  "${bold}${ylw}  ███████╗███████╗██║ ╚═╝ ██║╚██████╔╝██████╔╝██║ ╚═╝ ██║███████╗██║ ╚████║",
-  "${bold}${ylw}  ╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝",
+  "${bold}${grn}  ███████╗██╗     ███╗   ███╗ ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗",
+  "${bold}${grn}  ██╔════╝██║     ████╗ ████║██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║",
+  "${bold}${grn}  █████╗  ██║     ██╔████╔██║██║   ██║██║  ██║██╔████╔██║█████╗  ██╔██╗ ██║",
+  "${bold}${grn}  ██╔══╝  ██║     ██║╚██╔╝██║██║   ██║██║  ██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║",
+  "${bold}${grn}  ███████╗███████╗██║ ╚═╝ ██║╚██████╔╝██████╔╝██║ ╚═╝ ██║███████╗██║ ╚████║",
+  "${bold}${grn}  ╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝",
   "",
   "${bold}${g(46)}  ═══════════════════════════════════════════════════════${rst}",
   "${bold}${g(46)}✓ CONNECTED ${rst}${g(226)}EMD VPS ${rst}${g(51)}SECURE ${rst}${g(201)}READY${rst}",
@@ -93,11 +93,11 @@ const MEDIUM_BANNER = [
 ].join("\r\n");
 
 const MOBILE_BANNER = [
-  "${bold}${g(46)}  ┌────────────────────────┐${rst}",
-  "${bold}${ylw}  │     E L M O D M E N    │${rst}",
-  "${bold}${g(46)}  │  ─────────────────────  │${rst}",
-  "${bold}${g(46)}  │  ✓ CONNECTED    READY  │${rst}",
-  "${bold}${g(46)}  └────────────────────────┘${rst}",
+  "${bold}${g(46)}  ╔════════════════════════╗${rst}",
+  "${bold}${grn}  ║     E L M O D M E N    ║${rst}",
+  "${bold}${g(46)}  ║  ════════════════════  ║${rst}",
+  "${bold}${g(46)}  ║  ✓ CONNECTED    READY  ║${rst}",
+  "${bold}${g(46)}  ╚════════════════════════╝${rst}",
 ].join("\r\n");
 
 export default function TerminalPage() {
@@ -125,13 +125,13 @@ export default function TerminalPage() {
     { label: "▶ php index.php", cmd: "php index.php", lang: "php" },
     { label: "▶ go run main.go", cmd: "go run main.go", lang: "go" },
     { label: "▶ bash script.sh", cmd: "bash script.sh", lang: "sh" },
-    { label: "─────────────", cmd: "", lang: "sep" },
+    { label: "═════════════", cmd: "", lang: "sep" },
     { label: "🌐 Serve HTTP 8000", cmd: "auto-serve \"python3 -m http.server {PORT}\" 8000", lang: "py" },
     { label: "🌐 Serve Node.js", cmd: "auto-serve \"node server.js --port {PORT}\" 3000", lang: "js" },
     { label: "🌐 Serve PHP", cmd: "auto-serve \"php -S 0.0.0.0:{PORT}\" 8000", lang: "php" },
     { label: "🌐 npm run dev (Vite)", cmd: "auto-serve \"npx vite --port {PORT}\" 5173", lang: "js" },
     { label: "🌐 npx serve", cmd: "auto-serve \"npx serve -l {PORT}\" 3000", lang: "js" },
-    { label: "─────────────", cmd: "", lang: "sep" },
+    { label: "═════════════", cmd: "", lang: "sep" },
     { label: "📦 git clone + install + run", cmd: "git clone <url> && cd <repo> && npm install && npm start", lang: "js" },
     { label: "📦 git clone + pip install", cmd: "git clone <url> && cd <repo> && pip install -r requirements.txt && python3 main.py", lang: "py" },
     { label: "📦 git clone + composer", cmd: "git clone <url> && cd <repo> && composer install && php -S 0.0.0.0:8000", lang: "php" },
@@ -214,9 +214,9 @@ export default function TerminalPage() {
     const ylw = g(226);
     const cols = term.cols || 80;
     let raw;
-    if (cols >= 56) {
+    if (cols >= 46) {
       raw = DESKTOP_BANNER;
-    } else if (cols >= 40) {
+    } else if (cols >= 36) {
       raw = MEDIUM_BANNER;
     } else {
       raw = MOBILE_BANNER;
