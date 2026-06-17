@@ -284,7 +284,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   };
 
   const t = (key: TranslationKey): string => {
-    return translations[lang][key] || translations.en[key] || key;
+    const dict = translations[lang] || translations.en;
+    return dict[key] || translations.en[key] || key;
   };
 
   return (
