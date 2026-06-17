@@ -214,9 +214,9 @@ export default function TerminalPage() {
     const ylw = g(226);
     const cols = term.cols || 80;
     let raw;
-    if (cols >= 46) {
+    if (cols >= 80) {
       raw = DESKTOP_BANNER;
-    } else if (cols >= 36) {
+    } else if (cols >= 57) {
       raw = MEDIUM_BANNER;
     } else {
       raw = MOBILE_BANNER;
@@ -357,7 +357,7 @@ export default function TerminalPage() {
       if (res.destroyed || !res.term) { resizeObs.disconnect(); return; }
       try {
         fitAddon.fit();
-        var b = res.term.cols >= 56 ? DESKTOP_BANNER : res.term.cols >= 40 ? MEDIUM_BANNER : MOBILE_BANNER;
+        var b = res.term.cols >= 80 ? DESKTOP_BANNER : res.term.cols >= 57 ? MEDIUM_BANNER : MOBILE_BANNER;
         var sl = b.split('\r\n').length + 1;
         res.term.write('\x1b[r\x1b[' + sl + ';r\x1b[' + sl + ';1H');
         const ws = res.ws;
