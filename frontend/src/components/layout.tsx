@@ -76,14 +76,14 @@ export function Layout({ children, path, navigate }: LayoutProps) {
 
       <div className="flex items-center px-4 h-16 border-b shrink-0 relative z-10" style={{ borderColor: "var(--sidebar-border)" }}>
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden animate-float"
-            style={{ boxShadow: "0 0 20px rgba(139,92,246,0.3)", border: "1px solid rgba(139,92,246,0.3)" }}>
-            <img src="/logo.jpg" alt="MODMEN" className="w-full h-full object-cover rounded-xl" />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: "linear-gradient(135deg, #6d28d9, #a855f7)", boxShadow: "0 0 15px rgba(139,92,246,0.3)" }}>
+            <TerminalSquare className="w-5 h-5 text-white" />
           </div>
           {!collapsed && (
             <div className="flex flex-col overflow-hidden">
-              <span className="text-white font-bold tracking-[0.2em] text-xs" style={{ fontFamily: "'JetBrains Mono', monospace" }}>SERVER HUB</span>
-              <span className="text-[9px] text-zinc-500 tracking-wider">v6</span>
+              <span className="text-white font-bold tracking-[0.2em] text-xs" style={{ fontFamily: "'JetBrains Mono', monospace" }}>EMD VPS</span>
+              <span className="text-[9px] text-zinc-500 tracking-wider">v5</span>
             </div>
           )}
         </div>
@@ -159,13 +159,13 @@ export function Layout({ children, path, navigate }: LayoutProps) {
           style={{ paddingTop: "env(safe-area-inset-top, 0px)", background: "var(--sidebar)", borderColor: "var(--sidebar-border)", boxShadow: "0 4px 30px rgba(0,0,0,0.3)" }}>
           <div className="flex items-center justify-between px-4 h-14">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden animate-float"
-                style={{ border: "1px solid rgba(139,92,246,0.3)" }}>
-                <img src="/logo.jpg" alt="MODMEN" className="w-full h-full object-cover rounded-lg" />
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg, #6d28d9, #a855f7)", boxShadow: "0 0 12px rgba(139,92,246,0.3)" }}>
+                <TerminalSquare className="w-4 h-4 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="font-bold text-white text-xs tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace" }}>SERVER HUB</span>
-                <span className="text-[8px] text-zinc-600 tracking-wider">v6</span>
+                <span className="font-bold text-white text-xs tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace" }}>EMD VPS</span>
+                <span className="text-[8px] text-zinc-600 tracking-wider">v5</span>
               </div>
             </div>
             <div className="flex items-center gap-1">
