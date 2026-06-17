@@ -6,6 +6,7 @@ import path from "path";
 import fs from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import helmet from "helmet";
 import { rateLimiter, securityHeaders } from "./middleware/security";
 import {
   cloudflareMiddleware,
@@ -19,6 +20,7 @@ app.set("trust proxy", ["loopback", "linklocal", "uniquelocal"]);
 
 app.use(compression({ level: 6, threshold: 256 }));
 app.use(cloudflareMiddleware);
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(cloudflareSecurityHeaders);
 app.use(securityHeaders);
 app.use(cloudflareCacheControl);
