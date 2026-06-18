@@ -60,13 +60,6 @@ function saveConversations(conversations: Conversation[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
 }
 
-function generateTitle(messages: Message[]): string {
-  const firstUserMsg = messages.find((m) => m.role === "user");
-  if (!firstUserMsg) return "New Chat";
-  const text = firstUserMsg.content.slice(0, 40);
-  return text.length < firstUserMsg.content.length ? text + "..." : text;
-}
-
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -256,44 +249,43 @@ export default function AIPage() {
     return d.toLocaleDateString();
   };
 
+  const s = (n: number) => " ".repeat(n);
+
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full overflow-hidden" style={{ background: "var(--background)" }}>
       {sidebarOpen && (
-        <div className="w-64 shrink-0 flex flex-col border-r overflow-hidden"
-          style={{ background: "#05020a", borderColor: "rgba(52,211,153,0.1)" }}>
-          <div className="p-3 border-b flex items-center justify-between" style={{ borderColor: "rgba(52,211,153,0.1)" }}>
-            <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "rgba(52,211,153,0.4)" }}>conversations</span>
+        <div className="w-64 shrink-0 flex flex-col border-r overflow-hidden" style={{ background: "var(--sidebar)", borderColor: "var(--sidebar-border)" }}>
+          <div className="p-3 border-b flex items-center justify-between" style={{ borderColor: "var(--sidebar-border)" }}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>Conversations</span>
             <Button variant="ghost" size="sm" onClick={createNewConversation}
-              className="h-6 px-1.5 gap-1 text-[10px] font-mono"
-              style={{ color: "rgba(52,211,153,0.6)" }}>
+              className="h-6 px-1.5 gap-1 text-[10px]" style={{ color: "var(--accent)" }}>
               <Plus className="w-3 h-3" /> new
             </Button>
           </div>
           <div className="flex-1 overflow-y-auto py-1">
             {conversations.length === 0 && (
               <div className="px-3 py-6 text-center">
-                <MessageSquare className="w-6 h-6 mx-auto mb-2" style={{ color: "rgba(52,211,153,0.15)" }} />
-                <p className="text-[10px] font-mono" style={{ color: "rgba(52,211,153,0.2)" }}>no conversations yet</p>
+                <MessageSquare className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--accent)" }} />
+                <p className="text-xs" style={{ color: "var(--sidebar-foreground)" }}>no conversations yet</p>
               </div>
             )}
             {conversations.map((conv) => (
               <div key={conv.id}
                 onClick={() => selectConversation(conv.id)}
                 className={`group mx-1.5 mb-0.5 px-2.5 py-2 rounded cursor-pointer transition-all flex items-start gap-2 ${
-                  activeConvId === conv.id ? "bg-emerald-500/10" : "hover:bg-white/3"
+                  activeConvId === conv.id ? "bg-primary/20" : "hover:bg-white/5"
                 }`}>
-                <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" style={{ color: activeConvId === conv.id ? "rgba(52,211,153,0.6)" : "rgba(52,211,153,0.2)" }} />
+                <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" style={{ color: activeConvId === conv.id ? "var(--accent)" : "var(--sidebar-foreground)" }} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-mono truncate" style={{ color: activeConvId === conv.id ? "rgba(52,211,153,0.8)" : "rgba(52,211,153,0.4)" }}>
+                  <p className="text-xs font-medium truncate" style={{ color: activeConvId === conv.id ? "var(--accent)" : "var(--sidebar-foreground)" }}>
                     {conv.title}
                   </p>
-                  <p className="text-[9px] font-mono mt-0.5" style={{ color: "rgba(52,211,153,0.2)" }}>
-                    {formatDate(conv.updatedAt)} · {conv.messages.length} msgs
+                  <p className="text-[9px] mt-0.5" style={{ color: "var(--sidebar-foreground)" }}>
+                    {formatDate(conv.updatedAt)} Â· {conv.messages.length} msgs
                   </p>
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all"
-                  style={{ color: "rgba(239,68,68,0.5)" }}>
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all text-red-400 hover:text-red-300">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -303,41 +295,39 @@ export default function AIPage() {
       )}
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 border-b shrink-0" style={{ background: "#0b0616", borderColor: "rgba(52,211,153,0.15)" }}>
+        <div className="flex items-center justify-between px-4 py-2 border-b shrink-0" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
           <div className="flex items-center gap-2">
             <button onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-1 rounded transition-colors"
-              style={{ color: "rgba(52,211,153,0.4)" }}
+              className="p-1 rounded transition-colors" style={{ color: "var(--foreground)" }}
               title={sidebarOpen ? "Close sidebar" : "Open sidebar"}>
               {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
             </button>
-            <Terminal className="w-4 h-4" style={{ color: "rgba(52,211,153,0.6)" }} />
-            <span className="text-xs font-mono" style={{ color: "rgba(52,211,153,0.5)" }}>AI_TERMINAL</span>
-            <div className="flex ml-3 overflow-hidden rounded" style={{ border: "1px solid rgba(52,211,153,0.15)" }}>
+            <Bot className="w-4 h-4" style={{ color: "var(--accent)" }} />
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>AI Chat</span>
+            <div className="flex ml-3 overflow-hidden rounded" style={{ border: "1px solid var(--border)" }}>
               <button onClick={() => setActiveTab("chat")}
-                className={`px-3 py-1 text-[10px] font-mono transition-colors ${activeTab === "chat" ? "text-emerald-300" : "text-zinc-600 hover:text-zinc-400"}`}
-                style={activeTab === "chat" ? { background: "rgba(52,211,153,0.1)" } : {}}>chat</button>
+                className={`px-3 py-1 text-[10px] font-medium transition-colors ${activeTab === "chat" ? "text-accent" : "text-zinc-500 hover:text-zinc-300"}`}
+                style={activeTab === "chat" ? { background: "color-mix(in srgb, var(--accent) 15%, transparent)" } : {}}>chat</button>
               <button onClick={() => setActiveTab("analyze")}
-                className={`px-3 py-1 text-[10px] font-mono transition-colors ${activeTab === "analyze" ? "text-emerald-300" : "text-zinc-600 hover:text-zinc-400"}`}
-                style={activeTab === "analyze" ? { background: "rgba(52,211,153,0.1)" } : {}}>analyze</button>
+                className={`px-3 py-1 text-[10px] font-medium transition-colors ${activeTab === "analyze" ? "text-accent" : "text-zinc-500 hover:text-zinc-300"}`}
+                style={activeTab === "analyze" ? { background: "color-mix(in srgb, var(--accent) 15%, transparent)" } : {}}>analyze</button>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={createNewConversation}
-              className="h-7 px-1.5 gap-1 text-[10px] font-mono"
-              style={{ color: "rgba(52,211,153,0.5)" }} title="New conversation">
+              className="h-7 px-1.5 gap-1 text-[10px]" style={{ color: "var(--accent)" }} title="New conversation">
               <Plus className="w-3.5 h-3.5" />
             </Button>
             <div className="relative">
               <select value={model} onChange={(e) => setModel(e.target.value as Model)}
-                className="appearance-none h-7 pl-2 pr-6 text-[10px] font-mono rounded border cursor-pointer outline-none"
-                style={{ background: "rgba(52,211,153,0.05)", borderColor: "rgba(52,211,153,0.2)", color: "rgba(52,211,153,0.7)" }}>
+                className="appearance-none h-7 pl-2 pr-6 text-[10px] font-medium rounded border cursor-pointer outline-none"
+                style={{ background: "var(--background)", borderColor: "var(--border)", color: "var(--foreground)" }}>
                 {Object.entries(MODEL_CONFIG).map(([key, cfg]) => <option key={key} value={key}>{cfg.label}</option>)}
               </select>
-              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: "rgba(52,211,153,0.4)" }} />
+              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: "var(--foreground)" }} />
             </div>
             <Button variant="ghost" size="sm" onClick={() => { setMessages([]); setActiveConvId(null); }}
-              className="h-7 px-1.5" style={{ color: "rgba(52,211,153,0.4)" }} title="Clear chat">
+              className="h-7 px-1.5" style={{ color: "var(--foreground)" }} title="Clear chat">
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </div>
@@ -346,26 +336,28 @@ export default function AIPage() {
         {activeTab === "analyze" ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 gap-4 max-w-xl mx-auto w-full">
             <div className="text-center mb-2">
-              <span className="text-lg font-mono" style={{ color: "rgba(52,211,153,0.3)" }}>╔═ file analyzer ═╗</span>
-              <p className="text-[10px] font-mono mt-2" style={{ color: "rgba(52,211,153,0.3)" }}>analyze any file with AI assistance</p>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <FileSearch className="w-5 h-5" style={{ color: "var(--accent)" }} />
+                <span className="text-lg font-bold" style={{ color: "var(--accent)" }}>File Analyzer</span>
+              </div>
+              <p className="text-xs" style={{ color: "var(--foreground)" }}>analyze any file with AI assistance</p>
             </div>
             <div className="w-full space-y-3">
               <div>
-                <label className="text-[10px] font-mono mb-1 block" style={{ color: "rgba(52,211,153,0.4)" }}>$ file_path</label>
+                <label className="text-xs font-medium mb-1 block" style={{ color: "var(--foreground)" }}>File Path</label>
                 <Input value={analyzePath} onChange={(e) => setAnalyzePath(e.target.value)} placeholder="/path/to/file.py"
-                  className="font-mono text-sm" style={{ background: "rgba(52,211,153,0.03)", borderColor: "rgba(52,211,153,0.2)", color: "rgba(52,211,153,0.7)" }} />
+                  className="text-sm" style={{ background: "var(--background)", borderColor: "var(--border)", color: "var(--foreground)" }} />
               </div>
               <div>
-                <label className="text-[10px] font-mono mb-1 block" style={{ color: "rgba(52,211,153,0.4)" }}>$ question</label>
+                <label className="text-xs font-medium mb-1 block" style={{ color: "var(--foreground)" }}>Question</label>
                 <textarea value={analyzeQuestion} onChange={(e) => setAnalyzeQuestion(e.target.value)}
                   placeholder="what does this file do?" rows={4}
-                  className="w-full px-3 py-2 rounded font-mono text-sm resize-none focus:outline-none"
-                  style={{ background: "rgba(52,211,153,0.03)", border: "1px solid rgba(52,211,153,0.2)", color: "rgba(52,211,153,0.7)" }} />
+                  className="w-full px-3 py-2 rounded text-sm resize-none focus:outline-none focus:ring-1"
+                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
               </div>
               <Button onClick={handleAnalyze} disabled={analyzing || !analyzePath.trim() || !analyzeQuestion.trim()}
-                className="w-full font-mono text-xs"
-                style={{ background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.2)", color: "rgba(52,211,153,0.7)" }}>
-                {analyzing ? <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> processing...</> : <><FileSearch className="w-3.5 h-3.5 mr-2" /> analyze</>}
+                className="w-full text-xs font-medium gap-2">
+                {analyzing ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing...</> : <><FileSearch className="w-3.5 h-3.5" /> Analyze</>}
               </Button>
             </div>
           </div>
@@ -375,18 +367,17 @@ export default function AIPage() {
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
                   <div className="flex flex-col items-center gap-2">
-                    <span className="text-2xl font-mono" style={{ color: "rgba(52,211,153,0.3)" }}>╭──────────────────╮</span>
-                    <span className="text-lg font-mono tracking-widest" style={{ color: "rgba(52,211,153,0.5)" }}>AI TERMINAL</span>
-                    <span className="text-2xl font-mono" style={{ color: "rgba(52,211,153,0.3)" }}>╰──────────────────╯</span>
+                    <Bot className="w-10 h-10" style={{ color: "var(--accent)" }} />
+                    <span className="text-lg font-bold uppercase tracking-widest" style={{ color: "var(--accent)" }}>AI Chat</span>
                   </div>
-                  <p className="text-xs font-mono" style={{ color: "rgba(52,211,153,0.3)" }}>ask anything about servers, code, or linux</p>
+                  <p className="text-sm" style={{ color: "var(--foreground)" }}>ask anything about servers, code, or linux</p>
                   <div className="grid grid-cols-2 gap-2 max-w-md w-full mt-2">
                     {["how to monitor CPU?", "explain bash script", "set up nginx?", "debug python code"].map((s) => (
                       <button key={s} onClick={() => { setInput(s); textareaRef.current?.focus(); }}
-                        className="px-3 py-2 text-xs font-mono text-left rounded border transition-all"
-                        style={{ borderColor: "rgba(52,211,153,0.15)", color: "rgba(52,211,153,0.4)", background: "rgba(52,211,153,0.03)" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(52,211,153,0.4)"; e.currentTarget.style.color = "rgba(52,211,153,0.7)"; e.currentTarget.style.background = "rgba(52,211,153,0.08)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(52,211,153,0.15)"; e.currentTarget.style.color = "rgba(52,211,153,0.4)"; e.currentTarget.style.background = "rgba(52,211,153,0.03)"; }}>{s}</button>
+                        className="px-3 py-2 text-xs font-medium text-left rounded border transition-all"
+                        style={{ borderColor: "var(--border)", color: "var(--foreground)", background: "var(--card)" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}>{s}</button>
                     ))}
                   </div>
                 </div>
@@ -394,33 +385,29 @@ export default function AIPage() {
 
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-                  <div className={`w-6 h-6 rounded flex items-center justify-center shrink-0 mt-1 ${
-                    msg.role === "assistant" ? "text-emerald-400" : "text-accent"
-                  }`}>
-                    {msg.role === "user" ? <span className="text-xs font-mono">&gt;</span> : <span className="text-xs font-mono">#</span>}
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-1"
+                    style={{ background: msg.role === "user" ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "color-mix(in srgb, var(--accent) 15%, transparent)" }}>
+                    {msg.role === "user"
+                      ? <User className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+                      : <Bot className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />}
                   </div>
-                  <div className={`max-w-[85%] flex flex-col gap-1`}>
+                  <div className="max-w-[85%] flex flex-col gap-1">
                     {msg.role === "assistant" && msg.model && (
-                      <span className="text-[9px] font-mono" style={{ color: "rgba(52,211,153,0.5)" }}>
-                        ──[{msg.model}]
+                      <span className="text-[10px]" style={{ color: "var(--accent)" }}>
+                        {msg.model}
                       </span>
                     )}
-                    {msg.role === "user" && (
-                      <span className="text-[9px] font-mono" style={{ color: "rgba(168,85,247,0.5)" }}>
-                        ──[{user?.display_name || user?.username || "user"}]
-                      </span>
-                    )}
-                    <div className={`px-3 py-2 text-sm font-mono leading-relaxed`}
+                    <div className="px-3 py-2.5 text-sm leading-relaxed rounded-lg"
                       style={msg.role === "user"
-                        ? { background: "rgba(168,85,247,0.08)", borderLeft: "2px solid rgba(168,85,247,0.4)", color: "#d8b4fe" }
-                        : { background: "rgba(52,211,153,0.04)", borderLeft: "2px solid rgba(52,211,153,0.3)", color: "#6ee7b7" }}>
+                        ? { background: "color-mix(in srgb, var(--accent) 10%, var(--card))", border: "1px solid var(--border)", color: "var(--accent)" }
+                        : { background: "var(--card)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
                       {msg.streaming ? (
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-4 bg-emerald-400 inline-block animate-pulse" />
-                          <span className="text-xs text-emerald-600 font-mono">processing...</span>
+                          <Loader2 className="w-4 h-4 animate-spin" style={{ color: "var(--accent)" }} />
+                          <span className="text-sm" style={{ color: "var(--accent)" }}>Thinking...</span>
                         </div>
                       ) : (
-                        <div className="prose prose-invert prose-sm max-w-none font-mono">
+                        <div className="prose prose-invert prose-sm max-w-none">
                           <ReactMarkdown components={{
                             code({ node, className, children, ...props }: any) {
                               const inline = !className;
@@ -428,16 +415,16 @@ export default function AIPage() {
                               const codeString = String(children).replace(/\n$/, "");
                               if (!inline && match) {
                                 return (
-                                  <div className="relative my-2 overflow-hidden" style={{ border: "1px solid rgba(52,211,153,0.15)" }}>
-                                    <div className="flex items-center justify-between px-3 py-1 text-xs font-mono" style={{ background: "rgba(52,211,153,0.06)", color: "rgba(52,211,153,0.5)" }}>
-                                      <span>{match[1]}</span><CopyButton text={codeString} />
+                                  <div className="relative my-2 overflow-hidden rounded-lg" style={{ border: "1px solid var(--border)" }}>
+                                    <div className="flex items-center justify-between px-3 py-1.5 text-xs" style={{ background: "color-mix(in srgb, var(--accent) 10%, transparent)" }}>
+                                      <span style={{ color: "var(--accent)" }}>{match[1]}</span><CopyButton text={codeString} />
                                     </div>
                                     <SyntaxHighlighter style={vscDarkPlus as any} language={match[1]} PreTag="div"
                                       customStyle={{ margin: 0, padding: "12px", fontSize: "12px" }}>{codeString}</SyntaxHighlighter>
                                   </div>
                                 );
                               }
-                              return <code className="bg-black/40 px-1 py-0.5 rounded font-mono" style={{ color: "rgba(52,211,153,0.9)", fontSize: "11px" }} {...props}>{children}</code>;
+                              return <code className="px-1 py-0.5 rounded text-xs" style={{ background: "color-mix(in srgb, var(--accent) 20%, transparent)", color: "var(--accent)" }} {...props}>{children}</code>;
                             },
                           }}>{msg.content}</ReactMarkdown>
                         </div>
@@ -454,19 +441,18 @@ export default function AIPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="px-4 py-2 border-t shrink-0" style={{ background: "#0b0616", borderColor: "rgba(52,211,153,0.1)" }}>
-              <div className="flex gap-2 items-end rounded p-2" style={{ border: "1px solid rgba(52,211,153,0.15)", background: "#05020a" }}>
-                <span className="text-xs font-mono pb-1.5 shrink-0" style={{ color: "rgba(52,211,153,0.4)" }}>$</span>
+            <div className="px-4 py-3 border-t shrink-0" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+              <div className="flex gap-2 items-end rounded-lg p-2" style={{ border: "1px solid var(--border)", background: "var(--background)" }}>
                 <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
-                  placeholder="type your command..." rows={1}
-                  className="flex-1 bg-transparent border-none text-sm font-mono resize-none focus:ring-0 focus:outline-none max-h-32 py-1.5"
-                  style={{ color: "rgba(52,211,153,0.7)", minHeight: "28px", caretColor: "rgba(52,211,153,0.8)" }} />
-                <Button onClick={sendMessage} disabled={!input.trim() || isStreaming} size="icon" className="h-7 w-7 shrink-0 rounded"
-                  style={input.trim() && !isStreaming ? { background: "rgba(52,211,153,0.15)", color: "rgba(52,211,153,0.7)" } : { background: "transparent", color: "rgba(52,211,153,0.2)" }}>
-                  {isStreaming ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  placeholder="Type your message..." rows={1}
+                  className="flex-1 bg-transparent border-none text-sm resize-none focus:ring-0 focus:outline-none max-h-32 py-1.5"
+                  style={{ color: "var(--foreground)", minHeight: "28px" }} />
+                <Button onClick={sendMessage} disabled={!input.trim() || isStreaming} size="icon" className="h-8 w-8 shrink-0 rounded-lg"
+                  style={input.trim() && !isStreaming ? { background: "var(--accent)", color: "var(--background)" } : { background: "transparent", color: "var(--foreground)" }}>
+                  {isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </Button>
               </div>
-              <p className="text-[9px] font-mono mt-1 text-center" style={{ color: "rgba(52,211,153,0.2)" }}>// AI may make mistakes</p>
+              <p className="text-[10px] mt-1.5 text-center" style={{ color: "var(--foreground)" }}>AI responses are generated and may not always be accurate</p>
             </div>
           </>
         )}
