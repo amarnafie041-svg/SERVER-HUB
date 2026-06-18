@@ -4,7 +4,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import {
   Send, Bot, User, Copy, Check, Trash2, FileSearch,
-  ChevronDown, Loader2, Sparkles, Terminal,
+  Loader2, Sparkles, Terminal,
   Plus, MessageSquare, X, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { api, BASE } from "@/lib/api";
 import { useAuth } from "@/contexts/auth";
 
-type Model = "chat" | "console";
+type Model = "chat" | "console" | "claude";
 
 interface Message {
   id: string;
@@ -33,9 +33,10 @@ interface Conversation {
   updatedAt: Date;
 }
 
-const MODEL_CONFIG = {
+const MODEL_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
   chat: { label: "GPT-OSS 20B", icon: Sparkles, color: "#8b5cf6" },
   console: { label: "Qwen 3.5 397B", icon: Terminal, color: "#a855f7" },
+  claude: { label: "Claude 4.5 Sonnet", icon: Bot, color: "#f59e0b" },
 };
 
 const STORAGE_KEY = "sh_ai_conversations";
@@ -333,13 +334,22 @@ export default function AIPage() {
               className="h-7 px-1.5 gap-1 text-[10px]" style={{ color: "var(--accent)" }} title="New conversation">
               <Plus className="w-3.5 h-3.5" />
             </Button>
-            <div className="relative">
-              <select value={model} onChange={(e) => setModel(e.target.value as Model)}
-                className="appearance-none h-7 pl-2 pr-6 text-[10px] font-medium rounded border cursor-pointer outline-none"
-                style={{ background: "var(--background)", borderColor: "var(--border)", color: "var(--foreground)" }}>
-                {Object.entries(MODEL_CONFIG).map(([key, cfg]) => <option key={key} value={key}>{cfg.label}</option>)}
-              </select>
-              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: "var(--foreground)" }} />
+            <div className="flex overflow-hidden rounded" style={{ border: "1px solid var(--border)" }}>
+              {(Object.entries(MODEL_CONFIG) as [Model, typeof MODEL_CONFIG[Model]][]).map(([key, cfg]) => {
+                const Icon = cfg.icon;
+                const active = model === key;
+                return (
+                  <button key={key} onClick={() => setModel(key)}
+                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-all"
+                    style={{
+                      background: active ? cfg.color + "20" : "transparent",
+                      color: active ? cfg.color : "var(--foreground)",
+                    }}>
+                    <Icon className="w-3 h-3" />
+                    <span>{cfg.label}</span>
+                  </button>
+                );
+              })}
             </div>
             <Button variant="ghost" size="sm" onClick={() => { setMessages([]); setActiveConvId(null); }}
               className="h-7 px-1.5" style={{ color: "var(--foreground)" }} title="Clear chat">
