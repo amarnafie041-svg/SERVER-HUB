@@ -7,12 +7,21 @@ const router: IRouter = Router();
 
 const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || "";
+const CLAUDE_API_URL = "https://codevyx.free.nf/lego/Claude-Sonnet-4.5.php";
 
-const AI_MODELS: Record<
-  string,
-  { key: string; model: string; temp: number; top_p: number; max_tokens: number; name: string }
-> = {
+interface ModelConfig {
+  key?: string;
+  model?: string;
+  temp?: number;
+  top_p?: number;
+  max_tokens?: number;
+  name: string;
+  provider: "nvidia" | "claude";
+}
+
+const AI_MODELS: Record<string, ModelConfig> = {
   chat: {
+    provider: "nvidia",
     key: NVIDIA_API_KEY,
     model: "openai/gpt-oss-20b",
     temp: 1.0,
@@ -21,6 +30,7 @@ const AI_MODELS: Record<
     name: "GPT-OSS 20B",
   },
   console: {
+    provider: "nvidia",
     key: NVIDIA_API_KEY,
     model: "qwen/qwen3.5-397b-a17b",
     temp: 0.6,
@@ -28,9 +38,13 @@ const AI_MODELS: Record<
     max_tokens: 4096,
     name: "Qwen 3.5 397B",
   },
+  claude: {
+    provider: "claude",
+    name: "Claude Sonnet 4.5",
+  },
 };
 
-const SYSTEM_PROMPT = `You are a helpful AI assistant specialized in SERVER HUB — a professional server management platform.
+const SYSTEM_PROMPT = `You are a helpful AI assistant specialized in SERVER HUB â€” a professional server management platform.
 You have expertise in server administration, Linux, Python, Node.js, PHP, Docker, and programming in general.
 Provide clear, concise, and accurate responses. Format code blocks with proper markdown syntax.`;
 
@@ -44,6 +58,18 @@ router.post("/ai/chat", async (req: Request, res: Response): Promise<void> => {
     }
 
     const modelConfig = AI_MODELS[modelKey] || AI_MODELS.chat;
+
+    if (modelConfig.provider === "claude") {
+      const url = `${CLAUDE_API_URL}?text=${encodeURIComponent(message)}`;
+      const claudeRes = await fetch(url);
+      if (!claudeRes.ok) {
+        res.status(502).json({ error: "Claude service error", content: "", model: modelConfig.name });
+        return;
+      }
+      const content = await claudeRes.text();
+      res.json({ content, model: modelConfig.name });
+      return;
+    }
 
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
