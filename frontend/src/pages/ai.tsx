@@ -304,13 +304,13 @@ export default function AIPage() {
             </button>
             <Bot className="w-4 h-4" style={{ color: "var(--accent)" }} />
             <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>AI Chat</span>
-            <div className="flex ml-3 overflow-hidden rounded" style={{ border: "1px solid var(--border)" }}>
+              <div className="flex ml-3 overflow-hidden rounded" style={{ border: "1px solid var(--border)" }}>
               <button onClick={() => setActiveTab("chat")}
                 className={`px-3 py-1 text-[10px] font-medium transition-colors ${activeTab === "chat" ? "text-accent" : "text-zinc-500 hover:text-zinc-300"}`}
-                style={activeTab === "chat" ? { background: "color-mix(in srgb, var(--accent) 15%, transparent)" } : {}}>chat</button>
+                style={activeTab === "chat" ? { background: "var(--card)" } : {}}>chat</button>
               <button onClick={() => setActiveTab("analyze")}
                 className={`px-3 py-1 text-[10px] font-medium transition-colors ${activeTab === "analyze" ? "text-accent" : "text-zinc-500 hover:text-zinc-300"}`}
-                style={activeTab === "analyze" ? { background: "color-mix(in srgb, var(--accent) 15%, transparent)" } : {}}>analyze</button>
+                style={activeTab === "analyze" ? { background: "var(--card)" } : {}}>analyze</button>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -386,7 +386,7 @@ export default function AIPage() {
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-1"
-                    style={{ background: msg.role === "user" ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "color-mix(in srgb, var(--accent) 15%, transparent)" }}>
+                    style={{ background: msg.role === "user" ? "var(--card)" : "var(--card)" }}>
                     {msg.role === "user"
                       ? <User className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
                       : <Bot className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />}
@@ -399,7 +399,7 @@ export default function AIPage() {
                     )}
                     <div className="px-3 py-2.5 text-sm leading-relaxed rounded-lg"
                       style={msg.role === "user"
-                        ? { background: "color-mix(in srgb, var(--accent) 10%, var(--card))", border: "1px solid var(--border)", color: "var(--accent)" }
+                        ? { background: "var(--card)", border: "1px solid var(--accent)", color: "var(--accent)" }
                         : { background: "var(--card)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
                       {msg.streaming ? (
                         <div className="flex items-center gap-2">
@@ -416,7 +416,7 @@ export default function AIPage() {
                               if (!inline && match) {
                                 return (
                                   <div className="relative my-2 overflow-hidden rounded-lg" style={{ border: "1px solid var(--border)" }}>
-                                    <div className="flex items-center justify-between px-3 py-1.5 text-xs" style={{ background: "color-mix(in srgb, var(--accent) 10%, transparent)" }}>
+                                    <div className="flex items-center justify-between px-3 py-1.5 text-xs" style={{ background: "var(--background)" }}>
                                       <span style={{ color: "var(--accent)" }}>{match[1]}</span><CopyButton text={codeString} />
                                     </div>
                                     <SyntaxHighlighter style={vscDarkPlus as any} language={match[1]} PreTag="div"
@@ -424,7 +424,7 @@ export default function AIPage() {
                                   </div>
                                 );
                               }
-                              return <code className="px-1 py-0.5 rounded text-xs" style={{ background: "color-mix(in srgb, var(--accent) 20%, transparent)", color: "var(--accent)" }} {...props}>{children}</code>;
+                              return <code className="px-1 py-0.5 rounded text-xs" style={{ background: "var(--card)", color: "var(--accent)" }} {...props}>{children}</code>;
                             },
                           }}>{msg.content}</ReactMarkdown>
                         </div>
