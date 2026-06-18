@@ -10,6 +10,35 @@ import { logActivity } from "./activity";
 
 const router: IRouter = Router();
 
+router.post("/auth/register", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { username, password, display_name, email } = req.body;
+    if (!username || !password) {
+      res.status(400).json({ message: "Username and password required" }); return;
+    }
+    if (storage.getUserByUsername(username)) {
+      res.status(409).json({ message: "Username already exists" }); return;
+    }
+    const newUser: Omit<User, "id" | "created_at" | "last_login"> = {
+      username,
+      password_hash: bcrypt.hashSync(password, 10),
+      role: "user",
+      display_name: display_name || username,
+      avatar: null,
+      created_at: new Date().toISOString(),
+      expires_at: null,
+      disabled: false,
+    };
+    const user = storage.createUser(newUser);
+    logActivity({ user: username, action: "register", target: "auth", details: "Registered successfully", ip: req.ip || "unknown", status: "success" });
+    notify("register", `New user *${username}* registered on SERVER HUB v5`);
+    res.json({ success: true, user: { id: user.id, username: user.username, role: user.role, display_name: user.display_name, avatar: user.avatar, expires_at: user.expires_at } });
+  } catch (err) {
+    logger.error({ err }, "Registration failed");
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 router.post("/auth/login", async (req: Request, res: Response): Promise<void> => {
   try {
     const { username, password } = req.body;
