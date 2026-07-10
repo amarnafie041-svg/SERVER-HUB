@@ -140,7 +140,7 @@ async function ensureUserIsolation(userId: string, username: string): Promise<vo
   }
 }
 
-router.get("/files/list", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.get("/files/list", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -180,7 +180,7 @@ router.get("/files/list", authenticate, requireAdmin, async (req: Request, res: 
   }
 });
 
-router.get("/files/read", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.get("/files/read", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -221,7 +221,7 @@ router.get("/files/read", authenticate, requireAdmin, async (req: Request, res: 
   }
 });
 
-router.post("/files/write", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.post("/files/write", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -251,7 +251,7 @@ router.post("/files/write", authenticate, requireAdmin, async (req: Request, res
   }
 });
 
-router.delete("/files/delete", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.delete("/files/delete", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -283,7 +283,7 @@ router.delete("/files/delete", authenticate, requireAdmin, async (req: Request, 
   }
 });
 
-router.post("/files/rename", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.post("/files/rename", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -315,7 +315,7 @@ router.post("/files/rename", authenticate, requireAdmin, async (req: Request, re
   }
 });
 
-router.post("/files/mkdir", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.post("/files/mkdir", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -341,7 +341,7 @@ router.post("/files/mkdir", authenticate, requireAdmin, async (req: Request, res
   }
 });
 
-router.post("/files/upload", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.post("/files/upload", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -447,7 +447,7 @@ router.post("/files/upload", authenticate, requireAdmin, async (req: Request, re
   }
 });
 
-router.get("/files/search", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.get("/files/search", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -494,7 +494,7 @@ router.get("/files/search", authenticate, requireAdmin, async (req: Request, res
   }
 });
 
-router.post("/files/extract", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.post("/files/extract", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -546,7 +546,7 @@ router.post("/files/extract", authenticate, requireAdmin, async (req: Request, r
   }
 });
 
-router.post("/files/compress", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.post("/files/compress", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";
@@ -582,7 +582,7 @@ router.post("/files/compress", authenticate, requireAdmin, async (req: Request, 
   }
 });
 
-router.get("/files/download", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.get("/files/download", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
     const userId = req.user?.userId || "";

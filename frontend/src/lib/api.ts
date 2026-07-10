@@ -121,6 +121,11 @@ export const api = {
   },
   getActivityStats: () => request<any>("/api/activity/stats"),
   clearActivity: () => request<{ success: boolean }>("/api/activity", { method: "DELETE" }),
+
+  getDomainInfo: () => request<any>("/api/domains/info"),
+  getHostingStatus: () => request<any>("/api/hosting/status"),
+  getHostingLanguages: () => request<any>("/api/hosting/languages"),
+  getHostingTemplates: () => request<any>("/api/hosting/templates"),
 };
 
 export function authFetch(url: string, options: RequestInit = {}): Promise<Response> {

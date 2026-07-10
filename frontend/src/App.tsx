@@ -18,6 +18,8 @@ const SettingsPage = lazy(() => import("@/pages/settings"));
 const CommandsPage = lazy(() => import("@/pages/commands"));
 const ActivityPage = lazy(() => import("@/pages/activity"));
 const DockerPage = lazy(() => import("@/pages/docker"));
+const HostingPage = lazy(() => import("@/pages/hosting"));
+const DomainsPage = lazy(() => import("@/pages/domains"));
 const LoginPage = lazy(() => import("@/pages/login"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
@@ -81,12 +83,14 @@ function AppRoutes() {
       case "/": return <Dashboard />;
       case "/terminal": return <TerminalPage />;
       case "/editor": return <EditorPage />;
-      case "/files": return user.role === "admin" ? <FilesPage /> : <Dashboard />;
+      case "/files": return <FilesPage />;
       case "/ai": return <AIPage />;
       case "/admin": return user.role === "admin" ? <AdminPage /> : <Dashboard />;
       case "/settings": return user.role === "admin" ? <SettingsPage /> : <Dashboard />;
       case "/commands": return <CommandsPage />;
       case "/docker": return <DockerPage />;
+      case "/hosting": return <HostingPage />;
+      case "/domains": return <DomainsPage />;
       case "/activity": return user.role === "admin" ? <ActivityPage /> : <Dashboard />;
       case "/profile": return <ProfilePage />;
       default: return <NotFound />;

@@ -3,6 +3,7 @@ import {
   Activity, TerminalSquare, Code, Folder, Bot,
   ChevronLeft, ChevronRight, Menu, Settings, User,
   Shield, LogOut, Globe, BookOpen, BarChart3, Server,
+  Network, Globe2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -34,13 +35,14 @@ export function Layout({ children, path, navigate }: LayoutProps) {
     { href: "/", label: t("dashboard"), icon: Activity },
     { href: "/terminal", label: t("terminal"), icon: TerminalSquare },
     { href: "/editor", label: t("editor"), icon: Code },
+    { href: "/files", label: t("files"), icon: Folder },
+    { href: "/hosting", label: "Hosting", icon: Server },
+    { href: "/domains", label: "Domains", icon: Globe2 },
     { href: "/ai", label: t("ai_chat"), icon: Bot },
     { href: "/commands", label: t("commands"), icon: BookOpen },
   ];
 
-  const adminNavItemsFromMain = user?.role === "admin" ? [
-    { href: "/files", label: t("files"), icon: Folder },
-  ] : [];
+  const adminNavItemsFromMain: any[] = [];
 
   const adminNavItems = user?.role === "admin" ? [
     { href: "/admin", label: t("admin"), icon: Shield },
@@ -223,7 +225,7 @@ export function Layout({ children, path, navigate }: LayoutProps) {
             {(() => {
               const mobileItems = [
                 ...mainNavItems.slice(0, 4),
-                ...(user?.role === "admin" ? [{ href: "/files", label: t("files"), icon: Folder }] : []),
+                { href: "/hosting", label: "Hosting", icon: Server },
                 { href: "/commands", label: t("commands"), icon: BookOpen },
               ];
               return mobileItems.map((item) => (

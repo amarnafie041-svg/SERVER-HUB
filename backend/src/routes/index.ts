@@ -11,6 +11,8 @@ import logsRouter from "./logs";
 import activityRouter from "./activity";
 import dockerRouter from "./docker";
 import portsRouter from "./ports";
+import domainsRouter from "./domains";
+import hostingRouter from "./hosting";
 
 const router: IRouter = Router();
 
@@ -26,6 +28,8 @@ router.use(logsRouter);
 router.use(activityRouter);
 router.use(dockerRouter);
 router.use(portsRouter);
+router.use(domainsRouter);
+router.use(hostingRouter);
 
 // Lightweight ping for uptime monitoring
 router.get("/ping", (_req, res) => res.json({ ok: true, time: Date.now() }));
