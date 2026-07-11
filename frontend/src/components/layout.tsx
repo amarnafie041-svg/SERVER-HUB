@@ -40,15 +40,15 @@ export function Layout({ children, path, navigate }: LayoutProps) {
     { href: "/domains", label: "Domains", icon: Globe2 },
     { href: "/ai", label: t("ai_chat"), icon: Bot },
     { href: "/commands", label: t("commands"), icon: BookOpen },
+    { href: "/docker", label: "Docker", icon: Server },
+    { href: "/activity", label: t("activity_log"), icon: BarChart3 },
+    { href: "/settings", label: t("settings"), icon: Settings },
   ];
 
   const adminNavItemsFromMain: any[] = [];
 
   const adminNavItems = user?.role === "admin" ? [
     { href: "/admin", label: t("admin"), icon: Shield },
-    { href: "/docker", label: "Docker", icon: Server },
-    { href: "/activity", label: t("activity_log"), icon: BarChart3 },
-    { href: "/settings", label: t("settings"), icon: Settings },
   ] : [];
 
   const isActive = (href: string) =>

@@ -86,12 +86,12 @@ function AppRoutes() {
       case "/files": return <FilesPage />;
       case "/ai": return <AIPage />;
       case "/admin": return user.role === "admin" ? <AdminPage /> : <Dashboard />;
-      case "/settings": return user.role === "admin" ? <SettingsPage /> : <Dashboard />;
+      case "/settings": return <SettingsPage />;
       case "/commands": return <CommandsPage />;
-      case "/docker": return user.role === "admin" ? <DockerPage /> : <Dashboard />;
+      case "/docker": return <DockerPage />;
       case "/hosting": return <HostingPage />;
       case "/domains": return <DomainsPage />;
-      case "/activity": return user.role === "admin" ? <ActivityPage /> : <Dashboard />;
+      case "/activity": return <ActivityPage />;
       case "/profile": return <ProfilePage />;
       default: return <NotFound />;
     }
