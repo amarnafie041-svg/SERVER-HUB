@@ -40,11 +40,11 @@ const AI_MODELS: Record<string, ModelConfig> = {
   deepseek: {
     provider: "nvidia",
     key: NVIDIA_API_KEY,
-    model: "deepseek-ai/deepseek-v4-flash",
+    model: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
     temp: 0.6,
     top_p: 0.95,
     max_tokens: 4096,
-    name: "DeepSeek V4 Flash",
+    name: "Nemotron 49B v1.5",
   },
   gemini: {
     provider: "gemini",
@@ -56,11 +56,11 @@ const AI_MODELS: Record<string, ModelConfig> = {
   chat: {
     provider: "nvidia",
     key: NVIDIA_API_KEY,
-    model: "meta/llama-3.3-70b-instruct",
+    model: "nvidia/llama-3.1-nemotron-70b-instruct",
     temp: 0.7,
     top_p: 0.95,
     max_tokens: 4096,
-    name: "Llama 3.3 70B",
+    name: "Nemotron 70B",
   },
   console: {
     provider: "nvidia",
