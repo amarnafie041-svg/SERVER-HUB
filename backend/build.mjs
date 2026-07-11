@@ -1,4 +1,4 @@
-import { rmSync, existsSync, readdirSync } from "fs";
+import { rmSync, existsSync, readdirSync, copyFileSync } from "fs";
 import { build } from "esbuild";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -52,3 +52,13 @@ await build({
 });
 
 console.log("Build output:", readdirSync(outDir));
+
+// Copy sandbox_runner.py into dist/ so it's accessible at runtime
+const pySrc = join(__dirname, "src", "lib", "sandbox_runner.py");
+const pyDest = join(outDir, "sandbox_runner.py");
+if (existsSync(pySrc)) {
+  copyFileSync(pySrc, pyDest);
+  console.log("Copied sandbox_runner.py to dist/");
+} else {
+  console.warn("sandbox_runner.py not found at", pySrc);
+}

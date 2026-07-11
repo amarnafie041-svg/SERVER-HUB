@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { Request, Response } from "express";
 import * as fs from "fs";
 import * as path from "path";
-import { execFile, execSync } from "child_process";
+import { execFile, execSync, spawn } from "child_process";
 import { promisify } from "util";
 import busboy from "busboy";
 import { logger } from "../lib/logger";
@@ -616,6 +616,138 @@ router.get("/files/download", authenticate, async (req: Request, res: Response):
   } catch (err) {
     logger.error({ err }, "Failed to download file");
     res.status(500).json({ error: "Download failed" });
+  }
+});
+
+// POST /api/files/run — execute a script inside the user's sandbox
+router.post("/files/run", authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const username = req.user?.username || "";
+    const userId = req.user?.userId || "";
+    await ensureUserIsolation(userId, username);
+
+    const { code, language, path: filePath, args = "" } = req.body;
+
+    if (!code && !filePath) {
+      res.status(400).json({ success: false, message: "Either 'code' or 'path' is required" });
+      return;
+    }
+
+    // Resolve the user's sandbox home
+    const baseDir = getUserBaseDir(userId);
+    const runDir = path.join(baseDir, "_run");
+    fs.mkdirSync(runDir, { recursive: true });
+
+    // Determine the script path and whether we wrote a temp file
+    let scriptPath: string;
+    let cleanupPath: string | null = null;
+
+    if (filePath) {
+      // Run an existing file from the user's sandbox
+      const resolved = resolveUserPath(filePath, userId);
+      if (!resolved || !fs.existsSync(resolved)) {
+        res.status(404).json({ success: false, message: "File not found" });
+        return;
+      }
+      scriptPath = resolved;
+    } else {
+      // Write the provided code to a temp file in _run/
+      const extMap: Record<string, string> = {
+        python: ".py", javascript: ".js", typescript: ".ts",
+        php: ".php", bash: ".sh", shell: ".sh",
+      };
+      const ext = extMap[language || "python"] || ".py";
+      const tmpName = `_run_${Date.now()}${ext}`;
+      scriptPath = path.join(runDir, tmpName);
+      fs.writeFileSync(scriptPath, code, "utf8");
+      cleanupPath = scriptPath;
+    }
+
+    // Determine the language from extension if not provided
+    const ext = path.extname(scriptPath).toLowerCase();
+    const lang = language || (
+      ext === ".py" ? "python" :
+      ext === ".js" ? "javascript" :
+      ext === ".ts" ? "typescript" :
+      ext === ".php" ? "php" :
+      ext === ".sh" ? "bash" :
+      "python"
+    );
+
+    // Build the command
+    const TIMEOUT_MS = 30_000;
+    let cmd: string;
+    let cmdArgs: string[];
+    const sandboxRunnerPath = path.join(__dirname, "sandbox_runner.py");
+
+    if (lang === "python" || ext === ".py") {
+      // Use sandbox_runner.py for Python — adds audit hook + builtins guard
+      cmd = "python3";
+      cmdArgs = [sandboxRunnerPath, baseDir, scriptPath, ...(args ? args.split(/\s+/) : [])];
+    } else if (lang === "javascript" || lang === "typescript" || ext === ".js" || ext === ".ts") {
+      cmd = lang === "typescript" ? "npx" : "node";
+      cmdArgs = lang === "typescript" ? ["tsx", scriptPath] : [scriptPath];
+    } else if (lang === "php" || ext === ".php") {
+      cmd = "php";
+      cmdArgs = [scriptPath];
+    } else if (lang === "bash" || lang === "shell" || ext === ".sh") {
+      cmd = "bash";
+      cmdArgs = [scriptPath];
+    } else {
+      res.status(400).json({ success: false, message: `Unsupported language: ${lang}` });
+      return;
+    }
+
+    // Execute the script
+    const result = await new Promise<{ stdout: string; stderr: string; exitCode: number }>((resolve) => {
+      const child = spawn(cmd, cmdArgs, {
+        cwd: baseDir,
+        env: {
+          ...process.env,
+          HOME: baseDir,
+          SANDBOX_HOME: baseDir,
+          TMPDIR: path.join(baseDir, "tmp"),
+          PYTHONUNBUFFERED: "1",
+        },
+        timeout: TIMEOUT_MS,
+        windowsHide: true,
+      });
+
+      let stdout = "";
+      let stderr = "";
+
+      child.stdout?.on("data", (chunk: Buffer) => {
+        stdout += chunk.toString("utf8");
+      });
+
+      child.stderr?.on("data", (chunk: Buffer) => {
+        stderr += chunk.toString("utf8");
+      });
+
+      child.on("close", (code) => {
+        resolve({ stdout, stderr, exitCode: code ?? 1 });
+      });
+
+      child.on("error", (err) => {
+        resolve({ stdout: "", stderr: err.message, exitCode: 1 });
+      });
+    });
+
+    // Cleanup temp file
+    if (cleanupPath) {
+      try { fs.unlinkSync(cleanupPath); } catch {}
+    }
+
+    res.json({
+      success: result.exitCode === 0,
+      stdout: result.stdout.slice(0, 100_000),   // cap output at 100KB
+      stderr: result.stderr.slice(0, 50_000),
+      exitCode: result.exitCode,
+      language: lang,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Failed to run script");
+    res.status(500).json({ success: false, message: err.message || "Failed to run script" });
   }
 });
 
