@@ -1,513 +1,150 @@
-import { useState, useEffect, useCallback } from "react";
-import { Play, Square, RefreshCcw, Pause, Trash2, TerminalSquare, Activity, Cpu, HardDrive, Globe, Server, Bug, AlertCircle, CheckCircle, XCircle, Shield, Lock, Eye, FileCheck, Box, Layers, ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
-import { useAuth } from "@/contexts/auth";
-import { useToast } from "@/hooks/use-toast";
+﻿import { Shield, Lock, Eye, FileCheck, Box, Layers, ShieldCheck, TerminalSquare } from "lucide-react";
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  let size = bytes;
-  let i = 0;
-  while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
-  return `${size.toFixed(1)} ${units[i]}`;
-}
-
-function StatCard({ icon: Icon, label, value, sub, color }: { icon: any; label: string; value: string; sub?: string; color?: string }) {
+function SecurityLayer({ icon: Icon, color, title, desc, items }: { icon: any; color: string; title: string; desc: string; items: { label: string; desc: string }[] }) {
   return (
-    <div className="rounded-xl border p-3 flex items-center gap-3" style={{ borderColor: "rgba(139,92,246,0.15)", background: "rgba(20,10,36,0.4)" }}>
-      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: color ? `${color}15` : "rgba(139,92,246,0.1)" }}>
-        <Icon className="w-5 h-5" style={{ color: color || "#8b5cf6" }} />
+    <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: `${color}25`, background: "rgba(20,10,36,0.4)" }}>
+      <div className="flex items-center gap-2">
+        <Icon className="w-4 h-4" style={{ color }} />
+        <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color }}>{title}</h3>
       </div>
-      <div className="min-w-0">
-        <div className="text-[11px] text-zinc-500 font-medium uppercase tracking-wider">{label}</div>
-        <div className="text-sm font-bold text-white font-mono truncate">{value}</div>
-        {sub && <div className="text-[10px] text-zinc-600">{sub}</div>}
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    running: "bg-green-500/20 text-green-400 border-green-500/30",
-    paused: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    stopped: "bg-red-500/20 text-red-400 border-red-500/30",
-    exited: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
-    created: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  };
-  const icons: Record<string, any> = {
-    running: CheckCircle,
-    paused: Pause,
-    stopped: XCircle,
-    exited: AlertCircle,
-    created: Server,
-  };
-  const Icon = icons[status] || AlertCircle;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${colors[status] || "bg-zinc-500/20 text-zinc-400"}`}>
-      <Icon className="w-3 h-3" /> {status}
-    </span>
-  );
-}
-
-function SecurityTab() {
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(34,197,94,0.1)" }}>
-          <ShieldCheck className="w-7 h-7 text-green-400" />
-        </div>
-        <div>
-          <h2 className="text-base font-bold text-white">User Isolation & Security</h2>
-          <p className="text-[11px] text-zinc-500">Details about how your data and code are protected</p>
-        </div>
-      </div>
-
-      {/* Intro */}
-      <div className="rounded-xl border p-4" style={{ borderColor: "rgba(34,197,94,0.2)", background: "rgba(34,197,94,0.03)" }}>
-        <p className="text-xs text-zinc-300 leading-relaxed">
-          Every user on Server-Hub gets a <span className="text-green-400 font-semibold">fully isolated sandbox environment</span>.
-          Your files, code, and processes are completely separated from other users. No user can access, read, modify,
-          or delete another user's data. Below are the technical details of each isolation layer.
-        </p>
-      </div>
-
-      {/* Layer 1: Container Isolation */}
-      <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "rgba(139,92,246,0.15)", background: "rgba(20,10,36,0.4)" }}>
-        <div className="flex items-center gap-2">
-          <Box className="w-4 h-4 text-purple-400" />
-          <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider">Layer 1: Container Isolation (Docker)</h3>
-        </div>
-        <p className="text-[11px] text-zinc-400 leading-relaxed">
-          Each user gets a dedicated Docker container running their own Linux environment.
-          Containers provide process-level isolation using kernel namespaces and cgroups.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {[
-            { label: "Read-Only Root Filesystem", desc: "The container's root filesystem is read-only. All writes go to isolated tmpfs mounts in /tmp, /home/runner, /var/tmp, and /run.", color: "#22c55e" },
-            { label: "Dropped Capabilities", desc: "All Linux capabilities are dropped (CapDrop ALL). Only NET_BIND_SERVICE, CHOWN, SETUID, SETGID, and DAC_OVERRIDE are allowed.", color: "#8b5cf6" },
-            { label: "No Privilege Escalation", desc: "Security option 'no-new-privileges:true' prevents processes from gaining new privileges via setuid binaries.", color: "#f59e0b" },
-            { label: "Memory Limit: 512MB", desc: "Each container is limited to 512MB RAM + 512MB swap. The container is OOM-killed if it exceeds this.", color: "#58a6ff" },
-            { label: "CPU Limit: 0.5 cores", desc: "Each container is capped at 50% of a CPU core. Fair resource sharing across all users.", color: "#d29922" },
-            { label: "PID Limit: 200", desc: "Maximum 200 processes per container. Prevents fork bombs and runaway processes.", color: "#ef4444" },
-            { label: "Open Files: 2048", desc: "Maximum 2048 open file descriptors per container.", color: "#06b6d4" },
-            { label: "Auto-Restart", desc: "Containers auto-restart on crash (unless-stopped policy) with max 5 retries. Your environment stays available.", color: "#10b981" },
-          ].map((item, i) => (
-            <div key={i} className="rounded-lg border p-2.5" style={{ borderColor: "rgba(139,92,246,0.1)", background: "rgba(15,5,28,0.5)" }}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: item.color }} />
-                <span className="text-[10px] font-bold text-zinc-300">{item.label}</span>
-              </div>
-              <p className="text-[10px] text-zinc-500 leading-relaxed pl-3">{item.desc}</p>
+      <p className="text-[11px] text-zinc-400 leading-relaxed">{desc}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {items.map((item, i) => (
+          <div key={i} className="rounded-lg border p-2.5" style={{ borderColor: "rgba(139,92,246,0.1)", background: "rgba(15,5,28,0.5)" }}>
+            <div className="flex items-center gap-1.5 mb-1">
+              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />
+              <span className="text-[10px] font-bold text-zinc-300">{item.label}</span>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Layer 2: File System Isolation */}
-      <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "rgba(139,92,246,0.15)", background: "rgba(20,10,36,0.4)" }}>
-        <div className="flex items-center gap-2">
-          <FileCheck className="w-4 h-4 text-blue-400" />
-          <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider">Layer 2: File System Isolation</h3>
-        </div>
-        <p className="text-[11px] text-zinc-400 leading-relaxed">
-          Every user's files are stored in a separate directory that only they can access.
-          The system enforces strict path validation on every file operation.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {[
-            { label: "Per-User Home Directory", desc: "Each user gets /home/runner/user_<username>/ with their own projects, configs, and data. No user can traverse outside their home." },
-            { label: "Path Traversal Protection", desc: "Every file operation (read, write, delete, rename) validates that the resolved path stays within the user's sandbox directory. Symlink attacks are blocked." },
-            { label: "Upload Isolation", desc: "File uploads are written directly to the user's sandbox directory. There is no shared upload area between users." },
-            { label: "No Cross-User Access", desc: "API endpoints require JWT authentication and always resolve paths relative to the authenticated user's sandbox. There is no way to access another user's files." },
-          ].map((item, i) => (
-            <div key={i} className="rounded-lg border p-2.5" style={{ borderColor: "rgba(139,92,246,0.1)", background: "rgba(15,5,28,0.5)" }}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
-                <span className="text-[10px] font-bold text-zinc-300">{item.label}</span>
-              </div>
-              <p className="text-[10px] text-zinc-500 leading-relaxed pl-3">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Layer 3: Terminal Sandbox */}
-      <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "rgba(139,92,246,0.15)", background: "rgba(20,10,36,0.4)" }}>
-        <div className="flex items-center gap-2">
-          <TerminalSquare className="w-4 h-4 text-amber-400" />
-          <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">Layer 3: Terminal Sandbox</h3>
-        </div>
-        <p className="text-[11px] text-zinc-400 leading-relaxed">
-          The interactive terminal enforces additional security restrictions on top of the container isolation.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {[
-            { label: "Blocked Commands", desc: "sudo, su, docker, systemctl, mount, fdisk, mkfs, dd, passwd, iptables, crontab, and many more system-level commands are blocked." },
-            { label: "CD Restricted", desc: "The cd command is restricted to the user's sandbox home directory. You cannot navigate to /etc, /root, or any other system directory." },
-            { label: "RM Protection", desc: "rm -rf and rm -f are blocked. Users can only delete individual files with safe confirmation." },
-            { label: "Resource Limits", desc: "CPU time: 300s, File size: 100MB, Open files: 2048, Max processes: 200. Prevents resource exhaustion." },
-          ].map((item, i) => (
-            <div key={i} className="rounded-lg border p-2.5" style={{ borderColor: "rgba(139,92,246,0.1)", background: "rgba(15,5,28,0.5)" }}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                <span className="text-[10px] font-bold text-zinc-300">{item.label}</span>
-              </div>
-              <p className="text-[10px] text-zinc-500 leading-relaxed pl-3">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Layer 4: Python Sandbox */}
-      <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "rgba(139,92,246,0.15)", background: "rgba(20,10,36,0.4)" }}>
-        <div className="flex items-center gap-2">
-          <Lock className="w-4 h-4 text-red-400" />
-          <h3 className="text-xs font-bold text-red-400 uppercase tracking-wider">Layer 4: Python Code Sandbox</h3>
-        </div>
-        <p className="text-[11px] text-zinc-400 leading-relaxed">
-          When you run Python code through the platform, it executes inside a sandbox with audit hooks and builtins protection.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {[
-            { label: "Audit Hook (PEP 578)", desc: "sys.addaudithook intercepts all file system operations (open, remove, mkdir, rename, chmod, etc.) and blocks access outside the user's directory. This hook cannot be removed once installed." },
-            { label: "Builtins.open Guard", desc: "The builtins.open function is patched to check paths before opening. Even if user code tries to call open() directly, it will be blocked if the path is outside the sandbox." },
-            { label: "OS Function Guards", desc: "os.listdir, os.mkdir, os.remove, os.rename, os.walk and other OS functions are patched with path-checking wrappers. Direct calls are validated." },
-            { label: "Subprocess Monitoring", desc: "subprocess.Popen, os.system, os.exec, and os.posix_spawn are intercepted. Commands with absolute paths outside the sandbox are blocked." },
-            { label: "Closure Variables", desc: "Security-critical variables (allowed paths, path checker function) are defined inside closures, not module globals. This prevents user code from modifying them via sys.modules." },
-            { label: "Fail-Closed Design", desc: "If any security check fails or throws an unexpected error, access is denied by default. There is no fail-open path." },
-          ].map((item, i) => (
-            <div key={i} className="rounded-lg border p-2.5" style={{ borderColor: "rgba(139,92,246,0.1)", background: "rgba(15,5,28,0.5)" }}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                <span className="text-[10px] font-bold text-zinc-300">{item.label}</span>
-              </div>
-              <p className="text-[10px] text-zinc-500 leading-relaxed pl-3">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Layer 5: Network & API Security */}
-      <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "rgba(139,92,246,0.15)", background: "rgba(20,10,36,0.4)" }}>
-        <div className="flex items-center gap-2">
-          <Eye className="w-4 h-4 text-cyan-400" />
-          <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Layer 5: Network & API Security</h3>
-        </div>
-        <p className="text-[11px] text-zinc-400 leading-relaxed">
-          All API communication is secured with authentication and rate limiting.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {[
-            { label: "JWT Authentication", desc: "Every API request requires a valid JWT token. Tokens are validated on every request. Sessions expire after a configured period." },
-            { label: "Rate Limiting", desc: "API endpoints are protected by rate limiting to prevent abuse and brute force attacks." },
-            { label: "HTTPS in Production", desc: "All communication is encrypted via TLS in production. Render provides automatic SSL certificates." },
-            { label: "CORS Protection", desc: "Cross-origin requests are restricted. Only the platform's own domain can make API calls." },
-          ].map((item, i) => (
-            <div key={i} className="rounded-lg border p-2.5" style={{ borderColor: "rgba(139,92,246,0.1)", background: "rgba(15,5,28,0.5)" }}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
-                <span className="text-[10px] font-bold text-zinc-300">{item.label}</span>
-              </div>
-              <p className="text-[10px] text-zinc-500 leading-relaxed pl-3">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="rounded-xl border p-4" style={{ borderColor: "rgba(34,197,94,0.2)", background: "rgba(34,197,94,0.03)" }}>
-        <div className="flex items-center gap-2 mb-2">
-          <Layers className="w-4 h-4 text-green-400" />
-          <h3 className="text-xs font-bold text-green-400 uppercase tracking-wider">5 Layers of Protection</h3>
-        </div>
-        <p className="text-[11px] text-zinc-400 leading-relaxed">
-          Your data is protected by <span className="text-green-400 font-semibold">5 independent security layers</span>: Container isolation,
-          file system isolation, terminal sandbox, Python code sandbox, and network/API security.
-          Even if one layer were compromised, the remaining layers continue to protect your data.
-          This defense-in-depth approach ensures your files, code, and processes remain private and secure.
-        </p>
+            <p className="text-[10px] text-zinc-500 leading-relaxed pr-3">{item.desc}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
 export default function DockerPage() {
-  const { user } = useAuth();
-  const [available, setAvailable] = useState(false);
-  const [containers, setContainers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedContainer, setSelectedContainer] = useState<any>(null);
-  const [containerStats, setContainerStats] = useState<any>(null);
-  const [containerLogs, setContainerLogs] = useState<any[]>([]);
-  const [containerProcs, setContainerProcs] = useState<any[]>([]);
-  const [logTail, setLogTail] = useState(50);
-  const [activeTab, setActiveTab] = useState<"containers" | "security">("containers");
-  const { toast } = useToast();
-  const isAdmin = user?.role === "admin";
-
-  const fetchData = useCallback(async () => {
-    try {
-      if (isAdmin) {
-        const info = await api.getDockerInfo();
-        setAvailable(info.available);
-        setContainers(info.containers || []);
-      } else {
-        const info = await api.getMyDockerContainer();
-        setAvailable(true);
-        const c = info.exists ? [{ ...info }] : [];
-        setContainers(c);
-        if (info.exists) setSelectedContainer(info as any);
-      }
-    } catch {
-      setAvailable(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [isAdmin]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  useEffect(() => {
-    if (!selectedContainer) return;
-    api.getDockerContainerStats(selectedContainer.username).then(setContainerStats).catch(() => setContainerStats(null));
-    api.getDockerContainerLogs(selectedContainer.username, logTail).then(setContainerLogs).catch(() => setContainerLogs([]));
-    api.getDockerContainerProcesses(selectedContainer.username).then(setContainerProcs).catch(() => setContainerProcs([]));
-    const interval = setInterval(() => {
-      if (selectedContainer) {
-        api.getDockerContainerStats(selectedContainer.username).then(setContainerStats).catch(() => {});
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [selectedContainer, logTail]);
-
-  const doAction = async (action: string, username: string) => {
-    try {
-      const adminActions: Record<string, any> = {
-        start: api.dockerStartContainer,
-        stop: api.dockerStopContainer,
-        restart: api.dockerRestartContainer,
-        pause: api.dockerPauseContainer,
-        unpause: api.dockerUnpauseContainer,
-        remove: api.dockerRemoveContainer,
-      };
-      const myActions: Record<string, any> = {
-        start: api.dockerStartMyContainer,
-        stop: api.dockerStopMyContainer,
-        restart: api.dockerRestartMyContainer,
-      };
-      const actions = isAdmin ? adminActions : myActions;
-      await actions[action]();
-      toast({ title: `Container ${action}ed`, description: username });
-      fetchData();
-      if (selectedContainer?.username === username) {
-        if (action === "remove") setSelectedContainer(null);
-      }
-    } catch (e: any) {
-      toast({ title: `Failed to ${action}`, description: e.message, variant: "destructive" });
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "#8b5cf6", borderTopColor: "transparent" }} />
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header with tabs */}
-      <div className="border-b shrink-0" style={{ borderColor: "rgba(139,92,246,0.2)" }}>
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <Server className="w-5 h-5 text-accent" />
-            <h1 className="text-sm font-bold text-white">Docker & Security</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            {activeTab === "containers" && (
-              <>
-                <StatusBadge status={available ? "running" : "stopped"} />
-                <span className="text-[11px] text-zinc-500 font-mono">{containers.length} container(s)</span>
-                <Button variant="ghost" size="sm" onClick={fetchData} className="h-7 w-7 p-0">
-                  <RefreshCcw className="w-3.5 h-3.5" />
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-        {/* Tab bar */}
-        <div className="flex px-4 gap-1">
-          <button
-            onClick={() => setActiveTab("containers")}
-            className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold rounded-t-lg transition-all border-b-2 ${
-              activeTab === "containers"
-                ? "text-white border-accent bg-white/5"
-                : "text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-white/5"
-            }`}
-          >
-            <Server className="w-3.5 h-3.5" />
-            Containers
-          </button>
-          <button
-            onClick={() => setActiveTab("security")}
-            className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold rounded-t-lg transition-all border-b-2 ${
-              activeTab === "security"
-                ? "text-green-400 border-green-400 bg-green-400/5"
-                : "text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-white/5"
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5" />
-            Security & Isolation
-          </button>
-        </div>
+      {/* Header */}
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b shrink-0" style={{ borderColor: "rgba(139,92,246,0.2)" }}>
+        <ShieldCheck className="w-5 h-5 text-green-400" />
+        <h1 className="text-sm font-bold text-white">الأمان والعزل</h1>
       </div>
 
-      {/* Tab content */}
-      {activeTab === "security" ? (
-        <div className="flex-1 overflow-y-auto p-4">
-          <SecurityTab />
-        </div>
-      ) : !available ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(239,68,68,0.1)" }}>
-            <XCircle className="w-8 h-8 text-red-400" />
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Header Card */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(34,197,94,0.1)" }}>
+            <ShieldCheck className="w-7 h-7 text-green-400" />
           </div>
-          <h2 className="text-lg font-bold text-zinc-400">Docker Not Available</h2>
-          <p className="text-sm text-zinc-600 text-center max-w-md">
-            Docker socket is not accessible from this environment. Container isolation requires Docker to be installed and running on the host machine with the Docker socket mounted.
-          </p>
-          <p className="text-xs text-zinc-600 text-center max-w-md">
-            Your files are still protected by the local sandbox isolation. Check the <button onClick={() => setActiveTab("security")} className="text-green-400 underline hover:text-green-300">Security & Isolation</button> tab for details.
-          </p>
-        </div>
-      ) : (
-        <div className="flex-1 flex min-h-0">
-          {isAdmin && (
-            <div className="w-72 border-r overflow-y-auto shrink-0" style={{ borderColor: "rgba(139,92,246,0.15)" }}>
-              <div className="p-2 space-y-1.5">
-                {containers.map((c: any) => (
-                  <div key={c.username} onClick={() => setSelectedContainer(c)}
-                    className={`flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-all border ${
-                      selectedContainer?.username === c.username
-                        ? "bg-primary/20 border-accent/30 text-white"
-                        : "hover:bg-white/5 border-transparent text-zinc-400 hover:text-zinc-200"
-                    }`}
-                    style={{ borderColor: selectedContainer?.username === c.username ? "rgba(139,92,246,0.3)" : "transparent" }}>
-                    <TerminalSquare className="w-4 h-4 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-mono font-semibold truncate">{c.username}</div>
-                      <StatusBadge status={c.status} />
-                    </div>
-                    {c.restartCount > 0 && (
-                      <span className="text-[9px] text-yellow-500 bg-yellow-500/10 px-1 rounded">{c.restartCount}x</span>
-                    )}
-                  </div>
-                ))}
-                {containers.length === 0 && (
-                  <div className="text-xs text-zinc-600 text-center py-8">No containers yet</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {!selectedContainer ? (
-              <div className="flex flex-col items-center justify-center h-full text-zinc-600 gap-3">
-                <Server className="w-12 h-12 opacity-30" />
-                <p className="text-sm">Select a container to view details</p>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-base font-bold text-white font-mono">{selectedContainer.username}</h2>
-                    <StatusBadge status={selectedContainer.status} />
-                    {selectedContainer.restartCount > 0 && (
-                      <span className="text-[10px] text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-full">
-                        Restarts: {selectedContainer.restartCount}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {selectedContainer.status === "stopped" || selectedContainer.status === "exited" ? (
-                      <Button variant="ghost" size="sm" onClick={() => doAction("start", selectedContainer.username)} className="h-8 w-8 p-0 text-green-400 hover:text-green-300" title="Start"><Play className="w-4 h-4" /></Button>
-                    ) : (
-                      <Button variant="ghost" size="sm" onClick={() => doAction("stop", selectedContainer.username)} className="h-8 w-8 p-0 text-red-400 hover:text-red-300" title="Stop"><Square className="w-4 h-4" /></Button>
-                    )}
-                    <Button variant="ghost" size="sm" onClick={() => doAction("restart", selectedContainer.username)} className="h-8 w-8 p-0 text-yellow-400 hover:text-yellow-300" title="Restart"><RefreshCcw className="w-4 h-4" /></Button>
-                    {selectedContainer.status === "running" ? (
-                      <Button variant="ghost" size="sm" onClick={() => doAction("pause", selectedContainer.username)} className="h-8 w-8 p-0 text-amber-400 hover:text-amber-300" title="Pause"><Pause className="w-4 h-4" /></Button>
-                    ) : selectedContainer.status === "paused" ? (
-                      <Button variant="ghost" size="sm" onClick={() => doAction("unpause", selectedContainer.username)} className="h-8 w-8 p-0 text-green-400 hover:text-green-300" title="Unpause"><Play className="w-4 h-4" /></Button>
-                    ) : null}
-                    <Button variant="ghost" size="sm" onClick={() => doAction("remove", selectedContainer.username)} className="h-8 w-8 p-0 text-red-500 hover:text-red-400" title="Remove"><Trash2 className="w-4 h-4" /></Button>
-                  </div>
-                </div>
-
-                {containerStats && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <StatCard icon={Cpu} label="CPU" value={`${containerStats.cpu_percent}%`} color="#22c55e" />
-                    <StatCard icon={Activity} label="Memory" value={formatBytes(containerStats.mem_used)} sub={`${containerStats.mem_percent}% of ${formatBytes(containerStats.mem_total)}`} color="#8b5cf6" />
-                    <StatCard icon={Globe} label="Network" value={`${formatBytes(containerStats.net_rx)} / ${formatBytes(containerStats.net_tx)}`} sub="RX / TX" color="#58a6ff" />
-                    <StatCard icon={HardDrive} label="Disk I/O" value={`${formatBytes(containerStats.block_rx)} / ${formatBytes(containerStats.block_tx)}`} sub="Read / Write" color="#d29922" />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="rounded-xl border p-3" style={{ borderColor: "rgba(139,92,246,0.15)", background: "rgba(20,10,36,0.4)" }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5"><Bug className="w-3.5 h-3.5" /> Processes</h3>
-                      <span className="text-[10px] text-zinc-600">{containerStats?.process_count || 0} processes</span>
-                    </div>
-                    <div className="space-y-0.5 max-h-40 overflow-y-auto">
-                      {containerProcs.slice(0, 15).map((p: any, i: number) => (
-                        <div key={i} className="flex items-center gap-2 text-[10px] font-mono">
-                          <span className="text-zinc-600 w-12 truncate">{p.pid}</span>
-                          <span className="text-zinc-500 w-12 truncate">{p.user}</span>
-                          <span className="text-green-400 w-10 text-right">{p.cpu}%</span>
-                          <span className="text-blue-400 w-12 text-right">{p.memory}%</span>
-                          <span className="text-zinc-400 flex-1 truncate">{p.command}</span>
-                        </div>
-                      ))}
-                      {containerProcs.length === 0 && <div className="text-[10px] text-zinc-600 text-center py-4">No process data</div>}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border p-3" style={{ borderColor: "rgba(139,92,246,0.15)", background: "rgba(20,10,36,0.4)" }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5"><Activity className="w-3.5 h-3.5" /> Logs</h3>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-zinc-600">tail:</span>
-                        <select value={logTail} onChange={(e) => setLogTail(parseInt(e.target.value))}
-                          className="h-6 text-[10px] bg-[#1d1033] border border-[rgba(139,92,246,0.25)] text-zinc-400 rounded px-1 outline-none">
-                          <option value={20}>20</option>
-                          <option value={50}>50</option>
-                          <option value={100}>100</option>
-                          <option value={200}>200</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="space-y-0.5 max-h-40 overflow-y-auto font-mono">
-                      {containerLogs.slice(0, 50).map((log: any, i: number) => (
-                        <div key={i} className="text-[9px] leading-relaxed flex gap-1">
-                          <span className="text-zinc-700 shrink-0">{log.timestamp?.split(".")[0] || ""}</span>
-                          <span className={log.stream === "stderr" ? "text-red-400" : "text-zinc-500"}>{log.message}</span>
-                        </div>
-                      ))}
-                      {containerLogs.length === 0 && <div className="text-[10px] text-zinc-600 text-center py-4">No logs</div>}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
+          <div>
+            <h2 className="text-base font-bold text-white">عزل المستخدمين والأمان</h2>
+            <p className="text-[11px] text-zinc-500">تفاصيل حماية بياناتك وشفرتك</p>
           </div>
         </div>
-      )}
+
+        {/* Intro */}
+        <div className="rounded-xl border p-4" style={{ borderColor: "rgba(34,197,94,0.2)", background: "rgba(34,197,94,0.03)" }}>
+          <p className="text-xs text-zinc-300 leading-relaxed">
+            كل مستخدم على Server-Hub يحصل على <span className="text-green-400 font-semibold">بيئة سندبود معزولة بالكامل</span>.
+            ملفاتك وشفرتك وعملياتك منفصلة تماماً عن المستخدمين الآخرين.
+            لا يمكن لأي مستخدم الوصول لبياناتك أو قراءتها أو تعديلها أو حذفها.
+            تفاصيل كل طبقة حمايةأدناه.
+          </p>
+        </div>
+
+        {/* Layer 1 */}
+        <SecurityLayer
+          icon={Box}
+          color="#a855f7"
+          title="الطبقة الأولى: عزل الحاوية (Docker)"
+          desc="كل مستخدم يحصل على حاوية Docker مخصصة تعمل بيئة Linux خاصة بها. الحوامل توفر عزل على مستوى العمليات باستخدام kernel namespaces و cgroups."
+          items={[
+            { label: "نظام ملفات للقراءة فقط", desc: "جذر نظام ملفات الحاوية للقراءة فقط. كل عمليات الكتابة تذهب إلى tmpfs mounts معزولة في /tmp و /home/runner و /var/tmp و /run." },
+            { label: "إسقاط القدرات", desc: "جميع قدرات Linux مسقطة (CapDrop ALL). فقط NET_BIND_SERVICE و CHOWN و SETUID و SETGID و DAC_OVERRIDE مسموح بها." },
+            { label: "منع تصعيد الصلاحيات", desc: "خيار الأمان 'no-new-privileges:true' يمنع العمليات من الحصول على صلاحيات جديدة عبر setuid binaries." },
+            { label: "حد الذاكرة: 512MB", desc: "كل حاوية محدودة بـ 512MB RAM + 512MB swap. الحاوية تُقتل عند تجاوز هذا الحد." },
+            { label: "حد المعالج: 0.5 نواة", desc: "كل حاوية محدودة بنصف نواة معالج. مشاركة عادلة للموارد بين جميع المستخدمين." },
+            { label: "حد العمليات: 200", desc: "حد أقصى 200 عملية لكل حاوية. يمنع fork bombs والعمليات الهاربة." },
+            { label: "الملفات المفتوحة: 2048", desc: "حد أقصى 2048 ملف مفتوح لكل حاوية." },
+            { label: "إعادة التشغيل التلقائية", desc: "الحوامل تعيد التشغيل تلقائياً عند التعطل مع حد أقصى 5 محاولات. بيئةك تبقى متاحة." },
+          ]}
+        />
+
+        {/* Layer 2 */}
+        <SecurityLayer
+          icon={FileCheck}
+          color="#3b82f6"
+          title="الطبقة الثانية: عزل نظام الملفات"
+          desc="ملفات كل مستخدم مخزنة في مجلد منفصل لا يمكن الوصول إليه إلا من قبله. النظام يفرض التحقق الصارم من المسار في كل عملية ملف."
+          items={[
+            { label: "مجلد شخصي لكل مستخدم", desc: "كل مستخدم يحصل على مجلد منزلي خاص في /home/runner/ بمشاريعه وتكويناته وبياناته. لا يمكن لأي مستخدم التาะّل خارج مجلده." },
+            { label: "حماية من تجاوز المسارات", desc: "كل عملية ملف (قراءة، كتابة، حذف، إعادة تسمية) تتحقق أن المسار المحسوب يبقى داخل مجلد سندبود المستخدم. هجمات Symlink محظورة." },
+            { label: "عزل الرفع", desc: "الملفات المرفوعة تُكتب مباشرة إلى مجلد سندبود المستخدم. لا يوجد منطقة رفع مشتركة بين المستخدمين." },
+            { label: "لا وصول بين المستخدمين", desc: "نقاط النهاية تتطلب JWT authentication وتحلل المسارات دائماً بالنسبة لمجلد سندبود المستخدم المصادق عليه. لا يوجد طريقة للوصول لملفات مستخدم آخر." },
+          ]}
+        />
+
+        {/* Layer 3 */}
+        <SecurityLayer
+          icon={TerminalSquare}
+          color="#f59e0b"
+          title="الطبقة الثالثة: سندبود الطرفية"
+          desc="الطرفية التفاعلية تفرض قيود أمان إضافية فوق عزل الحاوية."
+          items={[
+            { label: "الأوامر المحظورة", desc: "sudo و su و docker و systemctl و mount و fdisk و mkfs و dd و passwd و iptables و crontab وأوامر نظام أخرى محظورة." },
+            { label: "تقييد cd", desc: "أوامر cd مقيّدة بمجلد سندبود المستخدم فقط. لا يمكن الانتقال إلى /etc أو /root أو أي مجلد نظام آخر." },
+            { label: "حماية rm", desc: "rm -rf و rm -f محظوران. المستخدمون لا يمكنهم حذف الملفات إلا بشكل فردي مع تأكيد آمن." },
+            { label: "حدود الموارد", desc: "وقت المعالج: 300 ثانية، حجم الملف: 100MB، الملفات المفتوحة: 2048، الحد الأقصى للعمليات: 200. يمنع استنزاف الموارد." },
+          ]}
+        />
+
+        {/* Layer 4 */}
+        <SecurityLayer
+          icon={Lock}
+          color="#ef4444"
+          title="الطبقة الرابعة: سندبود تشغيل الشفرة"
+          desc="عند تشغيل أي شفرة (Python, Node.js, PHP, Bash) عبر المنصة، تُنفذ داخل سندبود مع حماية إضافية حسب اللغة."
+          items={[
+            { label: "Python — Audit Hooks", desc: "sys.addaudithook يعترض جميع عمليات الملفات (open, remove, mkdir, rename, chmod...) ويحظر الوصول خارج مجلد المستخدم. لا يمكن إزالة هذا الـ hook بعد تسجيله." },
+            { label: "Python — Builtins Guard", desc: "دالة builtins.open معدلة للتحقق من المسارات قبل الفتح. حتى لو حاول كود المستخدم استدعاء open() مباشرة، سيُحظر إذا كان المسار خارج السندبود." },
+            { label: "Node.js — VM Context", desc: "الشفرة تعمل داخل vm.Context معزول. الوحدات الخطيرة (child_process, net, http, fs) محظورة أو محصّنة. كل عمليات fs تُفحص قبل التنفيذ." },
+            { label: "PHP — open_basedir + disable_functions", desc: "PHP يُقيد بالـ open_basedir لمجلد المستخدم فقط. الدوال الخطيرة (exec, system, shell_exec, passthru...) معطلة..Classes الخطيرة محظورة." },
+            { label: "Bash — PATH مقيّد + أوامر محظورة", desc: "مسار PATH محدود فقط للمجلدات النظام ومجلد المستخدم. أوامر النظام (sudo, docker, mount...) محظورة. كل أوامر الملفات تُفحص." },
+            { label: "كل اللغات — فشل مقفل", desc: "في كل اللغات، إذا فشل أي فحص أمان أو حدث خطأ غير متوقع، الوصول يُرفض افتراضياً. لا يوجد مسار فتح عند الفشل." },
+          ]}
+        />
+
+        {/* Layer 5 */}
+        <SecurityLayer
+          icon={Eye}
+          color="#06b6d4"
+          title="الطبقة الخامسة: أمان الشبكة والـ API"
+          desc="جميع اتصالات الـ API محمية بالمصادقة وتقييد المعدل."
+          items={[
+            { label: "مصادقة JWT", desc: "كل طلب API يتطلب رمز JWT صالح. الرموز تُتحقق في كل طلب. انتهاء الصلاحية بعد فترة محددة." },
+            { label: "تقييد المعدل", desc: "نقاط النهاية محمية بتقييد المعدل لمنع سوء الاستخدام وهجمات القوة الغاشمة." },
+            { label: "HTTPS في الإنتاج", desc: "جميع الاتصالات مشفرة عبر TLS في بيئة الإنتاج. Render يوفر شهادات SSL تلقائية." },
+            { label: "حماية CORS", desc: "طلبات Cross-origin مقيّدة. فقط نطاق المنصة نفسه يمكنه عمل طلبات API." },
+          ]}
+        />
+
+        {/* Summary */}
+        <div className="rounded-xl border p-4" style={{ borderColor: "rgba(34,197,94,0.2)", background: "rgba(34,197,94,0.03)" }}>
+          <div className="flex items-center gap-2 mb-2">
+            <Layers className="w-4 h-4 text-green-400" />
+            <h3 className="text-xs font-bold text-green-400 uppercase tracking-wider">5 طبقات حماية مستقلة</h3>
+          </div>
+          <p className="text-[11px] text-zinc-400 leading-relaxed">
+            بياناتك محمية بـ <span className="text-green-400 font-semibold">5 طبقات أمان مستقلة</span>: عزل الحاوية،
+            عزل نظام الملفات، سندبود الطرفية، سندبود تشغيل الشفرة، وأمان الشبكة والـ API.
+            حتى لو تمت اختراق طبقة واحدة، الطبقات المتبقية تستمر في حماية بياناتك.
+            نهج الدفاع المتعدد هذا يضمن بقاء ملفاتك وشفرتك وعملياتك خاصة وآمنة.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
+
