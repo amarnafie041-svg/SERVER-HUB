@@ -9,6 +9,7 @@ import { logger } from "../lib/logger";
 import { authenticate, requireAdmin } from "../middleware/authenticate";
 import { dockerManager } from "../lib/docker-manager";
 import { sandboxManager } from "../lib/sandbox-manager";
+import { storage } from "../lib/storage";
 
 const execFileAsync = promisify(execFile);
 
@@ -37,7 +38,9 @@ function safePath(requestPath: string, baseDir?: string): string | null {
 function getUserBaseDir(userId: string): string {
   const home = sandboxManager.getUserSandboxHome(userId);
   if (home) return home;
-  sandboxManager.ensureUserSandbox(userId);
+  const user = storage.getUserById(userId);
+  const limits = user ? { cpu_limit: user.cpu_limit, ram_limit: user.ram_limit, disk_limit: user.disk_limit } : undefined;
+  sandboxManager.ensureUserSandbox(userId, undefined, limits);
   return sandboxManager.getUserSandboxHome(userId) || FALLBACK_BASE_DIR;
 }
 

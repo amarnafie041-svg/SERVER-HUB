@@ -26,6 +26,9 @@ export interface User {
   last_login: string | null;
   custom_subdomain: string | null;
   custom_port: number | null;
+  cpu_limit: number | null;
+  ram_limit: number | null;
+  disk_limit: number | null;
 }
 
 export interface Settings {
@@ -69,7 +72,7 @@ function loadData(): StorageData {
   if (!existsSync(DATA_FILE)) {
     const adminHash = bcrypt.hashSync("mero1212#", 10);
     const initial: StorageData = {
-      users: [{
+      users:       [{
         id: "admin-001",
         username: "elmodmen",
         password_hash: adminHash,
@@ -82,6 +85,9 @@ function loadData(): StorageData {
         last_login: null,
         custom_subdomain: "elmodmen",
         custom_port: null,
+        cpu_limit: null,
+        ram_limit: null,
+        disk_limit: null,
       }],
       settings: DEFAULT_SETTINGS,
     };
@@ -97,6 +103,9 @@ function loadData(): StorageData {
     data.users = data.users.map((u) => ({
       custom_subdomain: null as string | null,
       custom_port: null as number | null,
+      cpu_limit: null as number | null,
+      ram_limit: null as number | null,
+      disk_limit: null as number | null,
       ...u,
     }));
     return data;

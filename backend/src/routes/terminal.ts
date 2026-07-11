@@ -9,6 +9,7 @@ import { verifyToken } from "../lib/jwt";
 import { logActivity } from "../routes/activity";
 import { dockerManager } from "../lib/docker-manager";
 import { sandboxManager } from "../lib/sandbox-manager";
+import { storage } from "../lib/storage";
 
 export const terminalRouterAPI: IRouter = Router();
 
@@ -218,7 +219,9 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
 
   let sandboxId: string, homeDir: string;
   try {
-    const sb = sandboxManager.ensureUserSandbox(userId, username);
+    const user = storage.getUserById(userId);
+    const limits = user ? { cpu_limit: user.cpu_limit, ram_limit: user.ram_limit, disk_limit: user.disk_limit } : undefined;
+    const sb = sandboxManager.ensureUserSandbox(userId, username, limits);
     sandboxId = sb.id;
     homeDir = sb.homeDir;
   } catch (err: any) {

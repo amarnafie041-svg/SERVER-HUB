@@ -47,7 +47,7 @@ function createSandboxDirs(baseDir: string): void {
   }
 }
 
-function writeSandboxConfigs(baseDir: string, id: string, name: string): void {
+function writeSandboxConfigs(baseDir: string, id: string, name: string, limits?: { cpu_limit?: number | null; ram_limit?: number | null; disk_limit?: number | null }): void {
   fs.mkdirSync(baseDir, { recursive: true, mode: 0o755 });
   createSandboxDirs(baseDir);
 
@@ -86,10 +86,11 @@ fi
 if ! command -v python &>/dev/null; then
   ln -sf /usr/bin/python3 "\${HOME}/bin/python" 2>/dev/null || true
 fi
-ulimit -S -t 300 2>/dev/null
-ulimit -S -f 102400 2>/dev/null
+ulimit -S -t ${limits?.cpu_limit ? Math.round(300 * (limits.cpu_limit / 100)) : 300} 2>/dev/null
 ulimit -S -n 2048 2>/dev/null
 ulimit -S -u 200 2>/dev/null
+${limits?.ram_limit ? `ulimit -v $(( ${limits.ram_limit} / 1024 )) 2>/dev/null  # User RAM limit` : "ulimit -S -v unlimited 2>/dev/null"}
+${limits?.disk_limit ? `ulimit -S -f $(( ${limits.disk_limit} / 512 )) 2>/dev/null  # User disk limit` : "ulimit -S -f 102400 2>/dev/null"}
 # Activate Python venv
 if [ -f /home/runner/.venv/bin/activate ]; then
   source /home/runner/.venv/bin/activate 2>/dev/null
@@ -363,36 +364,36 @@ export const sandboxManager = {
     return true;
   },
 
-  createSandbox(userId?: string, username?: string): { id: string; homeDir: string } {
+  createSandbox(userId?: string, username?: string, limits?: { cpu_limit?: number | null; ram_limit?: number | null; disk_limit?: number | null }): { id: string; homeDir: string } {
     const id = generateId();
     const name = username ? sanitizeUserId(username) : (userId ? sanitizeUserId(userId) : "unknown");
     const homeRoot = isWindows
       ? (process.env.USERPROFILE || "C:\\Users\\Default")
       : "/home/runner";
     const homeDir = path.resolve(homeRoot, `user_${name}`);
-    writeSandboxConfigs(homeDir, id, name);
+    writeSandboxConfigs(homeDir, id, name, limits);
     const sandbox: Sandbox = { id, homeDir, process: null, created: new Date(), lastActivity: new Date() };
     sandboxes.set(id, sandbox);
     if (userId) {
       userSandboxes.set(userId, { id, homeDir });
     }
-    logger.info({ id, homeDir, userId: userId || "none" }, "Sandbox created");
+    logger.info({ id, homeDir, userId: userId || "none", limits }, "Sandbox created");
     return { id, homeDir };
   },
 
-  ensureUserSandbox(userId: string, username?: string): { id: string; homeDir: string } {
+  ensureUserSandbox(userId: string, username?: string, limits?: { cpu_limit?: number | null; ram_limit?: number | null; disk_limit?: number | null }): { id: string; homeDir: string } {
     const existing = userSandboxes.get(userId);
     if (existing) {
       const sandbox = sandboxes.get(existing.id);
       if (sandbox) {
         logger.info({ userId, id: existing.id, homeDir: existing.homeDir }, "Reusing existing user sandbox, refreshing configs");
         const name = username ? sanitizeUserId(username) : "unknown";
-        writeSandboxConfigs(existing.homeDir, existing.id, name);
+        writeSandboxConfigs(existing.homeDir, existing.id, name, limits);
         return { id: existing.id, homeDir: existing.homeDir };
       }
       userSandboxes.delete(userId);
     }
-    const result = this.createSandbox(userId, username);
+    const result = this.createSandbox(userId, username, limits);
     userSandboxes.set(userId, { id: result.id, homeDir: result.homeDir });
     logger.info({ userId, id: result.id, homeDir: result.homeDir }, "User sandbox created");
     return result;

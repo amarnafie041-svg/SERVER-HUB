@@ -24,6 +24,9 @@ interface UserData {
   expires_at: string | null;
   disabled: boolean;
   last_login: string | null;
+  cpu_limit: number | null;
+  ram_limit: number | null;
+  disk_limit: number | null;
 }
 
 export default function AdminPage() {
@@ -36,7 +39,7 @@ export default function AdminPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<UserData | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [form, setForm] = useState({ username: "", password: "", display_name: "", role: "user", expires_days: "", disabled: false });
+  const [form, setForm] = useState({ username: "", password: "", display_name: "", role: "user", expires_days: "", disabled: false, cpu_limit: "", ram_limit: "", disk_limit: "" });
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "system">("overview");
   const [systemStats, setSystemStats] = useState<any>(null);
   const [dockerStatus, setDockerStatus] = useState<{ available: boolean; containers: string[] } | null>(null);
@@ -61,10 +64,10 @@ export default function AdminPage() {
   const createUser = async () => {
     if (!form.username || !form.password) { toast({ title: t("error"), description: "Username and password required", variant: "destructive" }); return; }
     try {
-      await api.createUser({ username: form.username, password: form.password, display_name: form.display_name || form.username, role: form.role, expires_days: form.expires_days ? parseInt(form.expires_days) : undefined });
+      await api.createUser({ username: form.username, password: form.password, display_name: form.display_name || form.username, role: form.role, expires_days: form.expires_days ? parseInt(form.expires_days) : undefined, cpu_limit: form.cpu_limit ? parseInt(form.cpu_limit) : null, ram_limit: form.ram_limit ? parseInt(form.ram_limit) : null, disk_limit: form.disk_limit ? parseInt(form.disk_limit) : null });
       toast({ title: t("success"), description: `User ${form.username} created` });
       setShowCreate(false);
-      setForm({ username: "", password: "", display_name: "", role: "user", expires_days: "", disabled: false });
+      setForm({ username: "", password: "", display_name: "", role: "user", expires_days: "", disabled: false, cpu_limit: "", ram_limit: "", disk_limit: "" });
       fetchUsers();
     } catch (err: any) { toast({ title: t("error"), description: err.message, variant: "destructive" }); }
   };
@@ -72,7 +75,7 @@ export default function AdminPage() {
   const updateUser = async () => {
     if (!editUser) return;
     try {
-      await api.updateUser(editUser.id, { display_name: form.display_name, role: form.role, disabled: form.disabled, ...(form.password ? { password: form.password } : {}), ...(form.expires_days !== "" ? { expires_days: form.expires_days === "0" ? null : parseInt(form.expires_days) } : {}) });
+      await api.updateUser(editUser.id, { display_name: form.display_name, role: form.role, disabled: form.disabled, cpu_limit: form.cpu_limit ? parseInt(form.cpu_limit) : null, ram_limit: form.ram_limit ? parseInt(form.ram_limit) : null, disk_limit: form.disk_limit ? parseInt(form.disk_limit) : null, ...(form.password ? { password: form.password } : {}), ...(form.expires_days !== "" ? { expires_days: form.expires_days === "0" ? null : parseInt(form.expires_days) } : {}) });
       toast({ title: t("success"), description: "User updated" });
       setEditUser(null);
       fetchUsers();
@@ -102,7 +105,7 @@ export default function AdminPage() {
     const diff = new Date(expires_at).getTime() - Date.now();
     return Math.max(0, Math.ceil(diff / 86400000));
   };
-  const openEdit = (u: UserData) => { setEditUser(u); setForm({ username: u.username, password: "", display_name: u.display_name, role: u.role, expires_days: "", disabled: u.disabled }); };
+  const openEdit = (u: UserData) => { setEditUser(u); setForm({ username: u.username, password: "", display_name: u.display_name, role: u.role, expires_days: "", disabled: u.disabled, cpu_limit: u.cpu_limit?.toString() || "", ram_limit: u.ram_limit?.toString() || "", disk_limit: u.disk_limit?.toString() || "" }); };
 
   const totalUsers = users.length;
   const activeUsers = users.filter((u) => !u.disabled).length;
@@ -460,6 +463,34 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 }
 
 function UserForm({ form, setForm, isCreate, t }: any) {
+  const CPU_OPTIONS = [
+    { value: "", label: "Unlimited" },
+    { value: "25", label: "25%" },
+    { value: "50", label: "50%" },
+    { value: "75", label: "75%" },
+    { value: "100", label: "100%" },
+  ];
+  const RAM_OPTIONS = [
+    { value: "", label: "Unlimited" },
+    { value: "536870912", label: "512 MB" },
+    { value: "1073741824", label: "1 GB" },
+    { value: "2147483648", label: "2 GB" },
+    { value: "4294967296", label: "4 GB" },
+    { value: "8589934592", label: "8 GB" },
+    { value: "17179869184", label: "16 GB" },
+    { value: "34359738368", label: "32 GB" },
+  ];
+  const DISK_OPTIONS = [
+    { value: "", label: "Unlimited" },
+    { value: "1073741824", label: "1 GB" },
+    { value: "2147483648", label: "2 GB" },
+    { value: "5368709120", label: "5 GB" },
+    { value: "10737418240", label: "10 GB" },
+    { value: "21474836480", label: "20 GB" },
+    { value: "53687091200", label: "50 GB" },
+    { value: "107374182400", label: "100 GB" },
+  ];
+
   return (
     <div className="space-y-4">
       {isCreate && (
@@ -486,6 +517,32 @@ function UserForm({ form, setForm, isCreate, t }: any) {
       <div>
         <label className="text-xs text-zinc-400 mb-1 block">{t("expires_in")} ({t("days")}) — 0 = {t("unlimited")}</label>
         <Input type="number" min="0" value={form.expires_days} onChange={(e: any) => setForm((p: any) => ({ ...p, expires_days: e.target.value }))} placeholder={t("no_expiry")} className="bg-[#1d1033] border-[rgba(139,92,246,0.3)] text-white" />
+      </div>
+      <div className="border-t pt-3 mt-3" style={{ borderColor: "rgba(139,92,246,0.15)" }}>
+        <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Resource Limits</p>
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="text-[10px] text-zinc-500 mb-1 block">CPU</label>
+            <select value={form.cpu_limit} onChange={(e: any) => setForm((p: any) => ({ ...p, cpu_limit: e.target.value }))}
+              className="w-full h-9 px-2 text-xs rounded-lg bg-[#1d1033] border border-[rgba(139,92,246,0.3)] text-white outline-none">
+              {CPU_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 mb-1 block">RAM</label>
+            <select value={form.ram_limit} onChange={(e: any) => setForm((p: any) => ({ ...p, ram_limit: e.target.value }))}
+              className="w-full h-9 px-2 text-xs rounded-lg bg-[#1d1033] border border-[rgba(139,92,246,0.3)] text-white outline-none">
+              {RAM_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 mb-1 block">Storage</label>
+            <select value={form.disk_limit} onChange={(e: any) => setForm((p: any) => ({ ...p, disk_limit: e.target.value }))}
+              className="w-full h-9 px-2 text-xs rounded-lg bg-[#1d1033] border border-[rgba(139,92,246,0.3)] text-white outline-none">
+              {DISK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <input type="checkbox" id="disabled" checked={form.disabled} onChange={(e: any) => setForm((p: any) => ({ ...p, disabled: e.target.checked }))} className="w-4 h-4 rounded accent-purple-500" />

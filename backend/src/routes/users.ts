@@ -15,16 +15,18 @@ router.get("/users", authenticate, requireAdmin, async (_req: Request, res: Resp
 
 router.post("/users", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { username, password, role, display_name, expires_at } = req.body;
+    const { username, password, role, display_name, expires_at, cpu_limit, ram_limit, disk_limit } = req.body;
     if (!username || !password) { res.status(400).json({ error: "Username and password required" }); return; }
     const existing = storage.getUserByUsername(username);
     if (existing) { res.status(409).json({ error: "Username already exists" }); return; }
     const user = storage.createUser({
       username, role: role || "user", display_name: display_name || username,
       password_hash: bcrypt.hashSync(password, 10), avatar: null, expires_at: expires_at || null, disabled: false,
+      cpu_limit: cpu_limit ?? null, ram_limit: ram_limit ?? null, disk_limit: disk_limit ?? null,
+      custom_subdomain: null, custom_port: null,
     });
     notify("register", `New user created: *${user.username}* (${user.role})`);
-    res.status(201).json({ id: user.id, username: user.username, role: user.role, display_name: user.display_name, created_at: user.created_at, expires_at: user.expires_at, disabled: user.disabled });
+    res.status(201).json({ id: user.id, username: user.username, role: user.role, display_name: user.display_name, created_at: user.created_at, expires_at: user.expires_at, disabled: user.disabled, cpu_limit: user.cpu_limit, ram_limit: user.ram_limit, disk_limit: user.disk_limit });
   } catch (err) {
     logger.error({ err }, "Create user failed");
     res.status(500).json({ error: "Server error" });
@@ -38,7 +40,7 @@ router.put("/users/:id", authenticate, requireAdmin, async (req: Request, res: R
     const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const updated = storage.updateUser(rawId, updates);
     if (!updated) { res.status(404).json({ error: "User not found" }); return; }
-    res.json({ id: updated.id, username: updated.username, role: updated.role, display_name: updated.display_name, disabled: updated.disabled, expires_at: updated.expires_at });
+    res.json({ id: updated.id, username: updated.username, role: updated.role, display_name: updated.display_name, disabled: updated.disabled, expires_at: updated.expires_at, cpu_limit: updated.cpu_limit, ram_limit: updated.ram_limit, disk_limit: updated.disk_limit });
   } catch (err) {
     logger.error({ err }, "Update user failed");
     res.status(500).json({ error: "Server error" });
