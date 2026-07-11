@@ -32,7 +32,7 @@ const AI_MODELS: Record<string, ModelConfig> = {
     top_p: 0.95,
     max_tokens: 16384,
     name: "DeepSeek V4 Pro",
-    thinking: false,
+    thinking: true,
   },
 };
 
@@ -51,7 +51,7 @@ router.put("/ai/settings", authenticate, async (_req: Request, res: Response): P
 
 router.post("/ai/chat", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { message, model: modelKey, history = [], stream: doStream } = req.body;
+    const { message, model: modelKey, history = [], stream: doStream, thinking } = req.body;
 
     if (!message || typeof message !== "string") {
       res.status(400).json({ error: "Message required" });
@@ -79,9 +79,11 @@ router.post("/ai/chat", async (req: Request, res: Response): Promise<void> => {
     };
 
     // DeepSeek requires chat_template_kwargs for thinking mode
-    if (modelConfig.thinking !== undefined) {
+    // Use frontend thinking param if provided, otherwise use model default
+    const thinkingMode = thinking !== undefined ? Boolean(thinking) : modelConfig.thinking;
+    if (thinkingMode !== undefined) {
       requestBody.extra_body = {
-        chat_template_kwargs: { thinking: modelConfig.thinking },
+        chat_template_kwargs: { thinking: thinkingMode },
       };
     }
 
@@ -132,11 +134,13 @@ router.post("/ai/chat", async (req: Request, res: Response): Promise<void> => {
             }
             try {
               const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta?.content || "";
-              if (delta) {
-                fullContent += delta;
+              const delta = parsed.choices?.[0]?.delta;
+              const reasoning = delta?.reasoning_content || "";
+              const content = delta?.content || "";
+              if (reasoning || content) {
+                fullContent += reasoning || content;
                 res.write(
-                  `data: ${JSON.stringify({ delta, content: fullContent, model: modelConfig.name })}\n\n`
+                  `data: ${JSON.stringify({ delta: reasoning || content, content: fullContent, model: modelConfig.name })}\n\n`
                 );
               }
             } catch {
