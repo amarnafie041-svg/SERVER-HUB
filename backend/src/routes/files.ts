@@ -157,8 +157,7 @@ router.get("/files/list", authenticate, async (req: Request, res: Response): Pro
     if (dockerManager.isAvailable) {
       let items = await dockerManager.execFileList(username, reqPath);
       if (items) {
-        // Hide system files from non-admin users at sandbox root
-        if (!isAdmin && reqPath === "/") {
+        if (!isAdmin) {
           items = items.filter((item: any) => !HIDDEN_SYSTEM_ITEMS.has(item.name));
         }
         res.json({ path: reqPath, items });
@@ -177,8 +176,8 @@ router.get("/files/list", authenticate, async (req: Request, res: Response): Pro
       .map((entry) => getFileInfo(path.join(dirPath, entry)))
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
-    // Hide system files from non-admin users (only show at sandbox root)
-    if (!isAdmin && reqPath === "/") {
+    // Hide system files from non-admin users
+    if (!isAdmin) {
       items = items.filter((item) => !HIDDEN_SYSTEM_ITEMS.has(item.name));
     }
 

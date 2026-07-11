@@ -84,7 +84,7 @@ export function Layout({ children, path, navigate }: LayoutProps) {
           </div>
           {!collapsed && (
             <div className="flex flex-col overflow-hidden">
-              <span className="text-white font-bold tracking-[0.2em] text-xs" style={{ fontFamily: "'JetBrains Mono', monospace" }}>EMD VPS</span>
+              <span className="text-white font-bold tracking-[0.2em] text-xs" style={{ fontFamily: "'JetBrains Mono', monospace" }}>𝐒𝐄𝐑𝐕𝐄𝐑 𝐇𝐔𝐁</span>
               <span className="text-[9px] text-zinc-500 tracking-wider">v5</span>
             </div>
           )}
@@ -166,7 +166,7 @@ export function Layout({ children, path, navigate }: LayoutProps) {
                 <img src="/logo.jpg" alt="MODMEN" className="w-full h-full object-cover" />
               </div>
               <div className="flex flex-col">
-                <span className="font-bold text-white text-xs tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace" }}>EMD VPS</span>
+                <span className="font-bold text-white text-xs tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace" }}>𝐒𝐄𝐑𝐕𝐄𝐑 𝐇𝐔𝐁</span>
                 <span className="text-[8px] text-zinc-600 tracking-wider">v5</span>
               </div>
             </div>
