@@ -487,6 +487,28 @@ terminalRouterAPI.delete(
   }
 );
 
+export function killAllSessionsForUser(username: string): number {
+  let killed = 0;
+  for (const [id, session] of sessions) {
+    if (session.username === username) {
+      try {
+        if (session.dockerStream) { try { session.dockerStream.end(); } catch {} }
+        if (session.pty) session.pty.kill();
+        if (session.sandboxProcess) { try { session.sandboxProcess.kill("SIGKILL"); } catch {} }
+        session.clients.forEach((c) => {
+          if (c.readyState === WebSocket.OPEN) {
+            c.send(JSON.stringify({ type: "exit" }));
+            c.close();
+          }
+        });
+        sessions.delete(id);
+        killed++;
+      } catch {}
+    }
+  }
+  return killed;
+}
+
 export function setupTerminalWebSocket(wss: WebSocketServer): void {
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     const url = req.url || "";
@@ -506,6 +528,21 @@ export function setupTerminalWebSocket(wss: WebSocketServer): void {
       ws.close(1000, "Session exited");
       return;
     }
+
+    try {
+      const parsed = new URL(url, "http://localhost");
+      const token = parsed.searchParams.get("token");
+      if (token) {
+        const payload = verifyToken(token);
+        if (payload) {
+          const isAdmin = payload.role === "admin";
+          if (!isAdmin && session.username !== payload.username) {
+            ws.close(1000, "Forbidden");
+            return;
+          }
+        }
+      }
+    } catch {}
 
     session.clients.add(ws);
 

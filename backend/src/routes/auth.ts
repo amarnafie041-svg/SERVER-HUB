@@ -7,6 +7,7 @@ import { authenticate } from "../middleware/authenticate";
 import { notify } from "../lib/telegram";
 import { logger } from "../lib/logger";
 import { logActivity } from "./activity";
+import { killAllSessionsForUser } from "./terminal";
 
 const router: IRouter = Router();
 
@@ -95,8 +96,11 @@ router.put("/auth/profile", authenticate, async (req: Request, res: Response): P
   }
 });
 
-router.post("/auth/logout", authenticate, async (_req: Request, res: Response): Promise<void> => {
-  res.json({ success: true });
+router.post("/auth/logout", authenticate, async (req: Request, res: Response): Promise<void> => {
+  const username = (req as any).user?.username || "";
+  const killed = killAllSessionsForUser(username);
+  logger.info({ username, killed }, "User logged out, terminal sessions killed");
+  res.json({ success: true, killed_sessions: killed });
 });
 
 export default router;

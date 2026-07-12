@@ -5,6 +5,7 @@ import { logger } from "./lib/logger";
 import { setupTerminalWebSocket } from "./routes/terminal";
 import { sandboxManager } from "./lib/sandbox-manager";
 import { startPortCleanup } from "./lib/port-manager";
+import { verifyToken } from "./lib/jwt";
 
 sandboxManager.startCleanupLoop();
 startPortCleanup();
@@ -24,6 +25,19 @@ const wss = new WebSocketServer({ noServer: true });
 server.on("upgrade", (req, socket, head) => {
   const url = req.url || "";
   if (url.includes("/api/terminal/ws/")) {
+    try {
+      const parsed = new URL(url, "http://localhost");
+      const token = parsed.searchParams.get("token");
+      if (!token || !verifyToken(token)) {
+        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+    } catch {
+      socket.write("HTTP/1.1 400 Bad Request\r\n\r\n");
+      socket.destroy();
+      return;
+    }
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit("connection", ws, req);
     });

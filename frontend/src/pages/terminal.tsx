@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/auth";
 
 type ConnStatus = "connecting" | "connected" | "reconnecting" | "offline";
 
@@ -99,6 +100,8 @@ export default function TerminalPage() {
   const containerRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const tabsScrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const prevUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -129,13 +132,39 @@ export default function TerminalPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const currentId = user?.id || null;
+    if (prevUserIdRef.current !== null && prevUserIdRef.current !== currentId) {
+      for (const tabId of Object.keys(resources.current)) {
+        const res = resources.current[tabId];
+        res.destroyed = true;
+        if (res.heartbeat) clearInterval(res.heartbeat);
+        if (res.resizeObserver) res.resizeObserver.disconnect();
+        if (res.ws) { res.ws.onclose = null; res.ws.close(); }
+        if (res.term) res.term.dispose();
+      }
+      resources.current = {};
+      containerRefs.current = {};
+      for (const tab of tabs) {
+        api.killTerminalSession(tab.sessionId).catch(() => {});
+      }
+      setTabs([]);
+      setActiveTabId(null);
+      setStatuses({});
+      localStorage.removeItem(STORED_SESSION_KEY);
+      setInitialized(false);
+    }
+    prevUserIdRef.current = currentId;
+  }, [user?.id]);
+
   const setStatus = (tabId: string, s: ConnStatus) =>
     setStatuses((prev) => ({ ...prev, [tabId]: s }));
 
   const buildWsUrl = (sessionId: string) => {
     const base = import.meta.env.VITE_API_URL || window.location.origin;
     const wsBase = base.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
-    return `${wsBase}/api/terminal/ws/${sessionId}`;
+    const token = localStorage.getItem("sh_token") || "";
+    return `${wsBase}/api/terminal/ws/${sessionId}?token=${encodeURIComponent(token)}`;
   };
 
   const getRes = (tabId: string): TabResources => {

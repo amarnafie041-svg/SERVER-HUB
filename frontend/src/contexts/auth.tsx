@@ -58,8 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try { await fetch("/api/auth/logout", { method: "POST", headers: { Authorization: `Bearer ${localStorage.getItem("sh_token")}` } }); } catch {}
     localStorage.removeItem("sh_token");
+    localStorage.removeItem("sh_terminal_session");
+    localStorage.removeItem("sh_startup_config");
     setToken(null);
     setUser(null);
   }, []);
