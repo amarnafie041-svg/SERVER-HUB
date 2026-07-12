@@ -789,19 +789,19 @@ router.post("/files/run", authenticate, async (req: Request, res: Response): Pro
 
     if (lang === "python" || ext === ".py") {
       const runner = path.join(runnerDir, "sandbox_runner.py");
-      cmd = "python3";
+      cmd = "/usr/bin/python3";
       cmdArgs = [runner, baseDir, scriptPath, ...(args ? args.split(/\s+/) : [])];
     } else if (lang === "javascript" || lang === "typescript" || ext === ".js" || ext === ".ts") {
       const runner = path.join(runnerDir, "sandbox_runner.js");
-      cmd = "node";
+      cmd = "/usr/bin/node";
       cmdArgs = [runner, baseDir, scriptPath, ...(args ? args.split(/\s+/) : [])];
     } else if (lang === "php" || ext === ".php") {
       const runner = path.join(runnerDir, "sandbox_runner.php");
-      cmd = "php";
+      cmd = "/usr/bin/php";
       cmdArgs = [runner, baseDir, scriptPath, ...(args ? args.split(/\s+/) : [])];
     } else if (lang === "bash" || lang === "shell" || ext === ".sh") {
       const runner = path.join(runnerDir, "sandbox_runner.sh");
-      cmd = "bash";
+      cmd = "/usr/bin/bash";
       cmdArgs = [runner, baseDir, scriptPath, ...(args ? args.split(/\s+/) : [])];
     } else {
       res.status(400).json({ success: false, message: `Unsupported language: ${lang}` });
