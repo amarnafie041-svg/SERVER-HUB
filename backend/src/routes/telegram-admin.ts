@@ -159,17 +159,19 @@ router.post("/telegram/webhook", async (req: Request, res: Response): Promise<vo
       const target = getTargetSandbox();
       await sendTelegramMsg(token, chatId,
         `🖥 *SERVER HUB Bot*\n\n` +
-        `📂 *الأوامر المتاحة:*\n` +
-        `/start - بدء البوت\n` +
-        `/help - المساعدة\n` +
-        `/status - حالة الاتصال\n` +
-        `/list - قائمة الملفات\n` +
-        `/setuser <username> - تغيير المستخدم المستهدف\n` +
-        `/clearuser - إعادة المستخدم للمدمن\n` +
-        `/target - عرض المستخدم المستهدف\n\n` +
+        `📂 *عرض الملفات:*\n` +
+        `/users - قائمة جميع المستخدمين\n` +
+        `/files <username> - ملفات مستخدم معين\n` +
+        `/get <username> <file> - تحميل ملف من السيرفر\n\n` +
         `📤 *رفع ملفات:*\n` +
-        `أرسل أي ملف للبوت وسيتم رفعه تلقائياً على السيرفر\n\n` +
-        `👤 المستخدم الحالي: *${target?.username || "admin"}*`
+        `/setuser <username> - تغيير المستخدم المستهدف\n` +
+        `/clearuser - إعادة للمدمن\n` +
+        `/target - عرض المستخدم الحالي\n\n` +
+        `⚙️ *أخرى:*\n` +
+        `/start - بدء البوت\n` +
+        `/status - حالة الخادم\n` +
+        `/help - المساعدة\n\n` +
+        `💡 أرسل ملف للبوت مباشرة لرفعه على السيرفر`
       );
       return;
     }
@@ -241,6 +243,153 @@ router.post("/telegram/webhook", async (req: Request, res: Response): Promise<vo
     if (text === "/target") {
       const target = getTargetSandbox();
       await sendTelegramMsg(token, chatId, `👤 المستخدم الحالي: *${target?.username || "admin"}*\n📂 المسار: \`${target?.homeDir || "N/A"}\``);
+      return;
+    }
+
+    // /users - list all users
+    if (text === "/users") {
+      const users = storage.getUsers();
+      if (users.length === 0) {
+        await sendTelegramMsg(token, chatId, "❌ لا يوجد مستخدمين");
+        return;
+      }
+      let msg = `👥 *جميع المستخدمين:*\n\n`;
+      for (const u of users) {
+        const home = sandboxManager.getUserSandboxHome(u.id);
+        const hasFiles = home ? fs.existsSync(home) : false;
+        let fileCount = 0;
+        let totalSize = 0;
+        if (hasFiles && home) {
+          try {
+            const walk = (dir: string) => {
+              const items = fs.readdirSync(dir);
+              for (const i of items) {
+                if (i.startsWith(".") || i === "bin" || i === "tmp" || i === "node_modules") continue;
+                const p = path.join(dir, i);
+                const st = fs.statSync(p);
+                if (st.isDirectory()) walk(p);
+                else { fileCount++; totalSize += st.size; }
+              }
+            };
+            walk(home);
+          } catch {}
+        }
+        const role = u.role === "admin" ? "👑" : "👤";
+        msg += `${role} *${u.display_name}* (@${u.username})\n`;
+        msg += `   📄 ${fileCount} ملف | ${formatSize(totalSize)}\n\n`;
+      }
+      if (msg.length > 4000) {
+        await sendTelegramMsg(token, chatId, msg.substring(0, 4000));
+      } else {
+        await sendTelegramMsg(token, chatId, msg);
+      }
+      return;
+    }
+
+    // /files <username> - list files for a user
+    if (text.startsWith("/files")) {
+      const parts = text.split(" ");
+      if (parts.length < 2) {
+        await sendTelegramMsg(token, chatId,
+          "❌ الاستخدام: /files <username>\nمثال: /files ahmed\n\nاكتب /users لرؤية جميع المستخدمين"
+        );
+        return;
+      }
+      const targetUsername = parts[1].trim();
+      const targetUser = storage.getUserByUsername(targetUsername);
+      if (!targetUser) {
+        await sendTelegramMsg(token, chatId, `❌ المستخدم *${targetUsername}* غير موجود`);
+        return;
+      }
+      const home = sandboxManager.getUserSandboxHome(targetUser.id);
+      if (!home || !fs.existsSync(home)) {
+        await sendTelegramMsg(token, chatId, `📂 المستخدم *${targetUsername}* ليس له ملفات`);
+        return;
+      }
+      const listing = listDirTree(home);
+      if (!listing.trim()) {
+        await sendTelegramMsg(token, chatId, `📂 مجلد *${targetUsername}* فارغ`);
+        return;
+      }
+      const msg = `📂 *ملفات ${targetUser.display_name} (@${targetUser.username}):*\n\n${listing}`;
+      if (msg.length > 4000) {
+        const lines = listing.split("\n");
+        const chunkSize = Math.ceil(lines.length / 2);
+        await sendTelegramMsg(token, chatId, `📂 *ملفات ${targetUsername} (1/2):*\n\n${lines.slice(0, chunkSize).join("\n")}`);
+        await sendTelegramMsg(token, chatId, `📂 *ملفات ${targetUsername} (2/2):*\n\n${lines.slice(chunkSize).join("\n")}`);
+      } else {
+        await sendTelegramMsg(token, chatId, msg);
+      }
+      return;
+    }
+
+    // /get <username> <filename> - download a file from user sandbox
+    if (text.startsWith("/get")) {
+      const parts = text.split(" ");
+      if (parts.length < 3) {
+        await sendTelegramMsg(token, chatId,
+          "❌ الاستخدام: /get <username> <filename>\nمثال: /get ahmed app.py\n\nاكتب /files ahmed لرؤية ملفات المستخدم"
+        );
+        return;
+      }
+      const targetUsername = parts[1].trim();
+      const fileName = parts.slice(2).join(" ").trim();
+      const targetUser = storage.getUserByUsername(targetUsername);
+      if (!targetUser) {
+        await sendTelegramMsg(token, chatId, `❌ المستخدم *${targetUsername}* غير موجود`);
+        return;
+      }
+      const home = sandboxManager.getUserSandboxHome(targetUser.id);
+      if (!home || !fs.existsSync(home)) {
+        await sendTelegramMsg(token, chatId, `📂 المستخدم *${targetUsername}* ليس له ملفات`);
+        return;
+      }
+
+      // Search for the file (support relative paths and filenames)
+      let filePath = path.join(home, fileName);
+      if (!fs.existsSync(filePath)) {
+        // Try to find file by name in sandbox tree
+        let found = false;
+        const searchFile = (dir: string): boolean => {
+          try {
+            const items = fs.readdirSync(dir);
+            for (const i of items) {
+              if (i.startsWith(".") || i === "bin" || i === "tmp" || i === "node_modules") continue;
+              const p = path.join(dir, i);
+              const st = fs.statSync(p);
+              if (st.isDirectory()) {
+                if (searchFile(p)) return true;
+              } else if (i === fileName) {
+                filePath = p;
+                return true;
+              }
+            }
+          } catch {}
+          return false;
+        };
+        found = searchFile(home);
+        if (!found) {
+          await sendTelegramMsg(token, chatId, `❌ الملف *${fileName}* غير موجود chez *${targetUsername}*`);
+          return;
+        }
+      }
+
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        await sendTelegramMsg(token, chatId, `❌ *${fileName}* مجلد وليس ملف\nاكتب /files ${targetUsername} لرؤية المحتوى`);
+        return;
+      }
+
+      if (stat.size > 50 * 1024 * 1024) {
+        await sendTelegramMsg(token, chatId, `❌ الملف كبير جداً (${formatSize(stat.size)})\nالحد الأقصى 50 MB`);
+        return;
+      }
+
+      await sendTelegramMsg(token, chatId, `⏳ جاري إرسال *${fileName}* (${formatSize(stat.size)})...`);
+      const sent = await sendTelegramDocument(token, chatId, filePath, `📄 ${fileName}\n👤 ${targetUsername}\n📦 ${formatSize(stat.size)}`);
+      if (!sent) {
+        await sendTelegramMsg(token, chatId, `❌ فشل إرسال الملف *${fileName}*`);
+      }
       return;
     }
 
