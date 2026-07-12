@@ -26,13 +26,20 @@ const FALLBACK_BASE_DIR = process.env.FILES_BASE_DIR || process.env.HOME || proc
 function safePath(requestPath: string, baseDir?: string): string | null {
   const root = baseDir || FALLBACK_BASE_DIR;
   const normalized = path.normalize(requestPath);
+  let resolved: string;
   if (path.isAbsolute(normalized)) {
-    if (!normalized.startsWith(root)) return null;
-    return normalized;
+    resolved = normalized;
+  } else {
+    resolved = path.resolve(root, normalized);
   }
-  const resolved = path.resolve(root, normalized);
   if (!resolved.startsWith(root)) return null;
-  return resolved;
+  try {
+    const realResolved = fs.realpathSync(resolved);
+    if (!realResolved.startsWith(root)) return null;
+    return realResolved;
+  } catch {
+    return resolved;
+  }
 }
 
 function getUserBaseDir(userId: string): string {
@@ -47,10 +54,21 @@ function getUserBaseDir(userId: string): string {
 function resolveUserPath(requestPath: string, userId: string): string | null {
   if (dockerManager.isAvailable) return requestPath;
   const baseDir = getUserBaseDir(userId);
-  // If already resolved to sandbox dir, use directly
   if (requestPath.startsWith(baseDir)) return safePath(requestPath, baseDir);
   const relative = requestPath.replace(/^\/home\/runner\/?/, "") || ".";
   return safePath(relative, baseDir);
+}
+
+const BLOCKED_SYSTEM_PATHS = new Set([
+  "/etc", "/root", "/proc", "/sys", "/dev", "/boot", "/sbin", "/lib", "/lib64",
+  "/var/log", "/var/run", "/var/lib", "/run", "/opt", "/srv", "/usr/local/bin",
+]);
+
+function isBlockedPath(resolvedPath: string): boolean {
+  for (const blocked of BLOCKED_SYSTEM_PATHS) {
+    if (resolvedPath === blocked || resolvedPath.startsWith(blocked + "/")) return true;
+  }
+  return false;
 }
 
 function formatBytes(bytes: number): string {
@@ -170,6 +188,7 @@ router.get("/files/list", authenticate, async (req: Request, res: Response): Pro
 
     const dirPath = resolveUserPath(reqPath, userId);
     if (!dirPath) { res.status(400).json({ error: "Invalid path" }); return; }
+    if (isBlockedPath(dirPath)) { res.status(403).json({ error: "Access denied" }); return; }
     if (!fs.existsSync(dirPath)) { res.status(404).json({ error: "Path not found" }); return; }
     const stat = fs.statSync(dirPath);
     if (!stat.isDirectory()) { res.status(400).json({ error: "Not a directory" }); return; }
@@ -225,6 +244,7 @@ router.get("/files/read", authenticate, async (req: Request, res: Response): Pro
 
     const resolved = resolveUserPath(filePath, userId);
     if (!resolved) { res.status(400).json({ error: "Invalid path" }); return; }
+    if (isBlockedPath(resolved)) { res.status(403).json({ error: "Access denied" }); return; }
     if (!fs.existsSync(resolved)) { res.status(404).json({ error: "File not found" }); return; }
     const stat = fs.statSync(resolved);
     if (stat.isDirectory()) { res.status(400).json({ error: "Cannot read directory" }); return; }
@@ -262,6 +282,7 @@ router.post("/files/write", authenticate, async (req: Request, res: Response): P
 
     const resolved = resolveUserPath(filePath, userId);
     if (!resolved) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
+    if (isBlockedPath(resolved)) { res.status(403).json({ success: false, message: "Access denied" }); return; }
     fs.mkdirSync(path.dirname(resolved), { recursive: true });
     fs.writeFileSync(resolved, content, "utf8");
     res.json({ success: true, message: "File saved" });
@@ -289,6 +310,7 @@ router.delete("/files/delete", authenticate, async (req: Request, res: Response)
 
     const resolved = resolveUserPath(filePath, userId);
     if (!resolved) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
+    if (isBlockedPath(resolved)) { res.status(403).json({ success: false, message: "Access denied" }); return; }
     if (!fs.existsSync(resolved)) { res.status(404).json({ success: false, message: "File not found" }); return; }
     const stat = fs.statSync(resolved);
     if (stat.isDirectory()) {
@@ -325,6 +347,7 @@ router.post("/files/rename", authenticate, async (req: Request, res: Response): 
     const resolvedOld = resolveUserPath(oldPath, userId);
     const resolvedNew = resolveUserPath(newPath, userId);
     if (!resolvedOld || !resolvedNew) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
+    if (isBlockedPath(resolvedOld) || isBlockedPath(resolvedNew)) { res.status(403).json({ success: false, message: "Access denied" }); return; }
     if (!fs.existsSync(resolvedOld)) { res.status(404).json({ success: false, message: "Source not found" }); return; }
     fs.mkdirSync(path.dirname(resolvedNew), { recursive: true });
     fs.renameSync(resolvedOld, resolvedNew);
@@ -353,6 +376,7 @@ router.post("/files/mkdir", authenticate, async (req: Request, res: Response): P
 
     const resolved = resolveUserPath(dirPath, userId);
     if (!resolved) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
+    if (isBlockedPath(resolved)) { res.status(403).json({ success: false, message: "Access denied" }); return; }
     fs.mkdirSync(resolved, { recursive: true });
     res.json({ success: true, message: "Directory created" });
   } catch (err) {
@@ -485,6 +509,7 @@ router.get("/files/search", authenticate, async (req: Request, res: Response): P
 
     const resolved = resolveUserPath(searchPath, userId);
     if (!resolved || !fs.existsSync(resolved)) { res.json([]); return; }
+    if (isBlockedPath(resolved)) { res.status(403).json({ error: "Access denied" }); return; }
 
     const results: ReturnType<typeof getFileInfo>[] = [];
     const qLower = q.toLowerCase();
@@ -537,6 +562,7 @@ router.post("/files/extract", authenticate, async (req: Request, res: Response):
 
     const resolved = resolveUserPath(archivePath, userId);
     if (!resolved) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
+    if (isBlockedPath(resolved)) { res.status(403).json({ success: false, message: "Access denied" }); return; }
     if (!fs.existsSync(resolved)) { res.status(404).json({ success: false, message: "Archive not found" }); return; }
     const stat = fs.statSync(resolved);
     if (stat.isDirectory()) { res.status(400).json({ success: false, message: "Path is a directory" }); return; }
@@ -591,6 +617,7 @@ router.post("/files/compress", authenticate, async (req: Request, res: Response)
 
     const resolved = resolveUserPath(targetPath, userId);
     if (!resolved) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
+    if (isBlockedPath(resolved)) { res.status(403).json({ success: false, message: "Access denied" }); return; }
     if (!fs.existsSync(resolved)) { res.status(404).json({ success: false, message: "Path not found" }); return; }
 
     const baseName = archiveName || path.basename(resolved);
@@ -628,6 +655,7 @@ router.get("/files/download", authenticate, async (req: Request, res: Response):
 
     const resolved = resolveUserPath(filePath, userId);
     if (!resolved) { res.status(400).json({ error: "Invalid path" }); return; }
+    if (isBlockedPath(resolved)) { res.status(403).json({ error: "Access denied" }); return; }
     if (!fs.existsSync(resolved)) { res.status(404).json({ error: "File not found" }); return; }
     const stat = fs.statSync(resolved);
     if (stat.isDirectory()) { res.status(400).json({ error: "Cannot download directory" }); return; }

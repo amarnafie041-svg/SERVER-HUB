@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { WebSocketServer, WebSocket } from "ws";
 import { IncomingMessage } from "http";
 import * as os from "os";
+import * as path from "path";
 import { logger } from "../lib/logger";
 import { authenticate, requireAdmin } from "../middleware/authenticate";
 import { verifyToken } from "../lib/jwt";
@@ -67,6 +68,73 @@ function broadcastToClients(session: TerminalSession, msg: object) {
   for (const c of session.clients) {
     if (c.readyState === WebSocket.OPEN) c.send(data);
   }
+}
+
+const DANGEROUS_COMMANDS = new Set([
+  "sudo", "su", "chroot", "docker", "docker-compose", "systemctl", "service",
+  "journalctl", "shutdown", "reboot", "poweroff", "halt", "init",
+  "mount", "umount", "fdisk", "mkfs", "dd", "passwd",
+  "useradd", "usermod", "groupadd", "modprobe", "insmod", "rmmod", "lsmod",
+  "iptables", "ip6tables", "ufw", "firewalld", "crontab", "at", "batch",
+  "nsenter", "unshare", "cgexec", "lxc", "podman",
+]);
+
+function isEscapeAttempt(input: string, sandboxHome: string): boolean {
+  const trimmed = input.trim();
+  const lower = trimmed.toLowerCase();
+  const base = lower.split(/\s+/)[0];
+
+  if (DANGEROUS_COMMANDS.has(base)) return true;
+
+  if (/rm\s+(-[a-zA-Z]*f|-[a-zA-Z]*r|--force|--recursive)/.test(lower)) return true;
+
+  if (/ln\s+(-s|--symbolic)/.test(lower)) {
+    const args = trimmed.split(/\s+/);
+    for (let i = 1; i < args.length; i++) {
+      if (args[i].startsWith("-")) continue;
+      const target = args[i];
+      if (target.startsWith("/") && !target.startsWith(sandboxHome)) return true;
+      const resolved = path.resolve(sandboxHome, target);
+      if (!resolved.startsWith(sandboxHome)) return true;
+      break;
+    }
+  }
+
+  const pathPatterns = [
+    /\.\.\/\.\.\//,
+    /\.\.\//,
+    /\/etc\/passwd/,
+    /\/etc\/shadow/,
+    /\/root/,
+    /\/proc/,
+    /\/sys/,
+    /\/dev\//,
+    /\/var\/log/,
+    /\/boot/,
+    /\/home\/runner\/[^u]/,
+    /\/home\/runner\/user_(?!.*sandbox)/,
+  ];
+  for (const pat of pathPatterns) {
+    if (pat.test(lower)) return true;
+  }
+
+  const dangerPythonPatterns = [
+    /os\.system\s*\(/,
+    /subprocess\.\w+\s*\(\s*\[/,
+    /subprocess\.call/,
+    /subprocess\.Popen/,
+    /__import__\s*\(\s*['\"]os['\"]\s*\)/,
+    /eval\s*\(\s*['\"]__import__/,
+    /exec\s*\(\s*['\"]import/,
+    /open\s*\(\s*['\"]\/(?!home\/runner)/,
+  ];
+  if (/\b(python|python3|perl|ruby|node)\b/.test(base)) {
+    for (const pat of dangerPythonPatterns) {
+      if (pat.test(trimmed)) return true;
+    }
+  }
+
+  return false;
 }
 
 terminalRouterAPI.get("/terminal/sandbox-stats", authenticate, async (_req: Request, res: Response): Promise<void> => {
@@ -452,6 +520,18 @@ export function setupTerminalWebSocket(wss: WebSocketServer): void {
       try {
         const msg = JSON.parse(rawMsg.toString());
         if (msg.type === "input" && msg.data) {
+          const sandboxHome = session.sandboxHome || "";
+          if (sandboxHome && typeof msg.data === "string") {
+            const testInput = session.commandBuffer + msg.data;
+            if (isEscapeAttempt(testInput, sandboxHome)) {
+              const blockMsg = "\r\n\x1b[1;31m⛔ BLOCKED: This command is not allowed in sandbox\x1b[0m\r\n";
+              if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "output", data: blockMsg }));
+              if (msg.data.includes("\r") || msg.data.includes("\n")) {
+                session.commandBuffer = "";
+              }
+              return;
+            }
+          }
           if (session.dockerStream) {
             session.dockerStream.write(msg.data);
           } else if (session.pty) {

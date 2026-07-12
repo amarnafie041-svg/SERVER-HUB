@@ -95,7 +95,7 @@ ${limits?.disk_limit ? `ulimit -S -f $(( ${limits.disk_limit} / 512 )) 2>/dev/nu
 if [ -f /home/runner/.venv/bin/activate ]; then
   source /home/runner/.venv/bin/activate 2>/dev/null
 fi
-BLOCKED=(sudo su chroot docker docker-compose systemctl service journalctl shutdown reboot poweroff halt init mount umount fdisk mkfs dd passwd useradd usermod groupadd modprobe insmod rmmod lsmod iptables ip6tables ufw firewalld crontab at batch nsenter unshare cgexec)
+BLOCKED=(sudo su chroot docker docker-compose systemctl service journalctl shutdown reboot poweroff halt init mount umount fdisk mkfs dd passwd useradd usermod groupadd modprobe insmod rmmod lsmod iptables ip6tables ufw firewalld crontab at batch nsenter unshare cgexec lxc podman nc ncat netcat socat telnet)
 ESC_BLOCKED=(cd.. cd\ ..)
 preexec() {
   local cmd="$1"
@@ -113,11 +113,25 @@ preexec() {
       return 1
     fi
   fi
+  if [[ "\$lower" == ln\ * && "\$lower" == *-s* ]]; then
+    local target
+    target="\$(echo "\$cmd" | awk '{for(i=1;i<=NF;i++) if(\$i !~ /^-/) {print \$i; exit}}')"
+    if [[ "\$target" == /* && "\$target" != "\${SANDBOX_HOME}"* ]]; then
+      echo -e "\\e[1;31m⛔ BLOCKED: Cannot create symlink outside sandbox\\e[0m"
+      return 1
+    fi
+  fi
   if [[ "\$cmd" == *".."* || "\$cmd" == *"/"* ]]; then
     local target
     target="\$(eval echo "\$cmd" 2>/dev/null)"
     if [[ "\$target" != "\${SANDBOX_HOME}"* && "\$target" != "."* && "\$target" != "\$HOME"* ]]; then
       echo -e "\\e[1;31m⛔ BLOCKED: Cannot escape sandbox directory\\e[0m"
+      return 1
+    fi
+  fi
+  if [[ "\$lower" == python3\ -c* || "\$lower" == python\ -c* || "\$lower" == perl\ -e* || "\$lower" == ruby\ -e* ]]; then
+    if [[ "\$cmd" == *"os.system"* || "\$cmd" == *"subprocess"* || "\$cmd" == *"open(\"/"* || "\$cmd" == *"eval("* || "\$cmd" == *"exec("* ]]; then
+      echo -e "\\e[1;31m⛔ BLOCKED: System calls not allowed in sandbox\\e[0m"
       return 1
     fi
   fi
@@ -152,6 +166,48 @@ rm() {
   command rm "$@"
 }
 
+# --- Override ln to prevent symlink escapes ---
+ln() {
+  local is_symlink=false
+  local args=()
+  for arg in "\$@"; do
+    if [ "\$arg" = "-s" ] || [ "\$arg" = "--symbolic" ]; then
+      is_symlink=true
+    else
+      args+=("\$arg")
+    fi
+  done
+  if [ "\$is_symlink" = true ] && [ "\${#args[@]}" -ge 2 ]; then
+    local target="\${args[-2]}"
+    if [[ "\$target" == /* && "\$target" != "\${SANDBOX_HOME}"* ]]; then
+      echo -e "\\e[1;31m⛔ BLOCKED: Cannot create symlink outside sandbox\\e[0m"
+      return 1
+    fi
+    if [[ "\$target" == *".."* ]]; then
+      local resolved_target
+      resolved_target="\$(realpath -m "\$target" 2>/dev/null || echo "\$target")"
+      if [[ "\$resolved_target" != "\${SANDBOX_HOME}"* ]]; then
+        echo -e "\\e[1;31m⛔ BLOCKED: Cannot create symlink outside sandbox\\e[0m"
+        return 1
+      fi
+    fi
+  fi
+  command ln "\$@"
+}
+
+# --- Override cat/head/tail/touch to prevent reading/writing outside sandbox ---
+for cmd in cat head tail less more touch chmod chown; do
+  eval "\${cmd}() {
+    for arg in \"\\\$@\"; do
+      if [[ \"\\\$arg\" == /* && \"\\\$arg\" != \"\\\${SANDBOX_HOME}\"* && \"\\\$arg\" != \"/dev/null\" ]]; then
+        echo -e \"\\e[1;31m⛔ BLOCKED: Cannot access \\\$arg outside sandbox\\e[0m\"
+        return 1
+      fi
+    done
+    command \${cmd} \"\\\$@\"
+  }"
+done
+
 # --- cd restricted to sandbox home ---
 cd() {
   local target="\${1:-\$HOME}"
@@ -162,6 +218,29 @@ cd() {
     return 1
   fi
   builtin cd "\$target"
+}
+
+# --- Block dangerous python/perl/ruby calls ---
+python3() {
+  if [[ "\$1" == "-c" && ("\$2" == *"os.system"* || "\$2" == *"subprocess"* || "\$2" == *"open(\"/"* || "\$2" == *"eval("* || "\$2" == *"exec("*) ]]; then
+    echo -e "\\e[1;31m⛔ BLOCKED: System calls not allowed in sandbox\\e[0m"
+    return 1
+  fi
+  command python3 "\$@"
+}
+python() {
+  if [[ "\$1" == "-c" && ("\$2" == *"os.system"* || "\$2" == *"subprocess"* || "\$2" == *"open(\"/"* || "\$2" == *"eval("* || "\$2" == *"exec("*) ]]; then
+    echo -e "\\e[1;31m⛔ BLOCKED: System calls not allowed in sandbox\\e[0m"
+    return 1
+  fi
+  command python "\$@"
+}
+perl() {
+  if [[ "\$1" == "-e" && ("\$2" == *"system("* || "\$2" == *"exec("* || "\$2" == *"open(\"/"*) ]]; then
+    echo -e "\\e[1;31m⛔ BLOCKED: System calls not allowed in sandbox\\e[0m"
+    return 1
+  fi
+  command perl "\$@"
 }
 
 # --- Python virtual env shortcut ---
