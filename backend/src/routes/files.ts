@@ -448,8 +448,11 @@ router.post("/files/upload", authenticate, async (req: Request, res: Response): 
 
     if (!useDocker) {
       baseDir = getUserBaseDir(userId);
-      const relative = uploadPath.replace(/^\/home\/runner\/?/, "") || ".";
-      uploadPath = relative;
+      if (uploadPath.startsWith(baseDir)) {
+        uploadPath = uploadPath.slice(baseDir.length).replace(/^[/\\]+/, "") || ".";
+      } else {
+        uploadPath = uploadPath.replace(/^\/home\/runner\/?/, "") || ".";
+      }
     }
 
     const bb = busboy({
