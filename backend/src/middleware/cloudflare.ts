@@ -74,11 +74,12 @@ export function cloudflareSecurityHeaders(req: Request, res: Response, next: Nex
 
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://cdn.jsdelivr.net",
     "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' ws: wss: https://integrate.api.nvidia.com",
+    "connect-src 'self' ws: wss: https://integrate.api.nvidia.com https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
     "img-src 'self' data: blob: https://i.ibb.co",
+    "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
