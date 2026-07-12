@@ -160,7 +160,7 @@ export default function Dashboard() {
             <div className="hidden sm:flex items-center gap-2 text-xs md:text-sm px-2 md:px-3 py-1.5 rounded-xl border" style={{ background: "#140a24", borderColor: "rgba(139,92,246,0.2)" }}>
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <Globe className="w-3 h-3 text-zinc-500" />
-              <span className="font-mono text-zinc-300 text-[10px] md:text-xs">{stats.hostname}</span>
+              <span className="font-mono text-zinc-300 text-[10px] md:text-xs">{stats.hostname?.replace(/-hibernate.*$/, "") || "SERVER HUB"}</span>
             </div>
           )}
           <div className="text-[10px] md:text-xs font-mono text-zinc-600 tabular-nums bg-white/5 px-2 md:px-3 py-1.5 rounded-xl">{now.toLocaleTimeString()}</div>
@@ -194,7 +194,7 @@ export default function Dashboard() {
           <MetricCard title={t("disk_space")} value={stats.disk_used} percent={stats.disk_percent}
             sub={`${t("of")} ${stats.disk_total}${stats.disk_free ? ` · ${stats.disk_free} free` : ""}`} icon={HardDrive} color="#6d28d9" />
           <MetricCard title={t("uptime")} value={stats.uptime}
-            sub={stats.timestamp ? new Date(stats.timestamp).toLocaleDateString() : undefined} icon={Clock} color="#7c3aed" />
+            sub={now.toLocaleDateString()} icon={Clock} color="#7c3aed" />
         </div>
       ) : null}
 
