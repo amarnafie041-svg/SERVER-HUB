@@ -305,8 +305,8 @@ export default function LandingPage() {
       <section ref={heroRef} className="reveal-section pt-28 pb-16 md:pt-36 md:pb-24 relative z-10">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="grid md:grid-cols-3 gap-8 items-center">
-            {/* Right side — text */}
-            <div className="md:col-span-1 text-center md:text-right order-2 md:order-1">
+            {/* Text section — now on the left */}
+            <div className="md:col-span-1 text-center md:text-right order-1 md:order-3">
               <p className="text-zinc-500 text-sm mb-3 tracking-wider">نرحب بكم في</p>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-4">
                 <span className="block" style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 50%, #8B5CF6 100%)", backgroundSize: "200% auto", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", animation: "gradientShift 4s ease-in-out infinite" }}>
@@ -314,7 +314,7 @@ export default function LandingPage() {
                 </span>
                 <span className="block text-white">المدمن</span>
               </h1>
-              <p className="text-zinc-400 text-sm md:text-base leading-relaxed mb-8 max-w-md mx-auto md:mx-0 md:mr-0">
+              <p className="text-zinc-400 text-sm md:text-base leading-relaxed mb-8 max-w-md mx-auto md:mx-0 md:ml-0">
                 منصة استضافة متكاملة لتشغيل مشاريع Python وNode.js وPHP من مكان واحد، بسرعة عالية، وأمان متقدم، ولوحة تحكم احترافية وسهلة الاستخدام.
               </p>
               <div className="flex flex-wrap gap-4 justify-center md:justify-start">
@@ -335,13 +335,13 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Left side — server illustration */}
-            <div className="md:col-span-1 order-1 md:order-2 flex justify-center">
+            {/* Center — server illustration */}
+            <div className="md:col-span-1 order-2 md:order-1 flex justify-center">
               <ServerIllustration />
             </div>
 
-            {/* Center — dashboard illustration */}
-            <div className="md:col-span-1 order-3 flex justify-center">
+            {/* Right side — dashboard illustration */}
+            <div className="md:col-span-1 order-3 md:order-2 flex justify-center">
               <DashboardIllustration />
             </div>
           </div>
