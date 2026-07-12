@@ -57,46 +57,83 @@ function writeSandboxConfigs(baseDir: string, id: string, name: string, limits?:
 
   const binDir = path.join(baseDir, "bin");
   fs.mkdirSync(binDir, { recursive: true });
-  fs.writeFileSync(path.join(binDir, "pip"), '#!/bin/bash\nexec /usr/bin/pip "$@"\n', "utf8");
-  fs.writeFileSync(path.join(binDir, "pip3"), '#!/bin/bash\nexec /usr/bin/pip3 "$@"\n', "utf8");
-  fs.writeFileSync(path.join(binDir, "python"), '#!/bin/bash\nexec /usr/bin/python3 "$@"\n', "utf8");
-  try { fs.chmodSync(path.join(binDir, "pip"), 0o755); } catch {}
-  try { fs.chmodSync(path.join(binDir, "pip3"), 0o755); } catch {}
-  try { fs.chmodSync(path.join(binDir, "python"), 0o755); } catch {}
+
+  const runnerDir = path.resolve(__dirname);
+
+  const pyRunner = path.join(runnerDir, "sandbox_runner.py").replace(/\\/g, "/");
+  const jsRunner = path.join(runnerDir, "sandbox_runner.js").replace(/\\/g, "/");
+  const phpRunner = path.join(runnerDir, "sandbox_runner.php").replace(/\\/g, "/");
+  const shRunner = path.join(runnerDir, "sandbox_runner.sh").replace(/\\/g, "/");
+
+  fs.writeFileSync(path.join(binDir, "pip"), `#!/bin/bash\nexec /usr/bin/pip "$@"\n`, "utf8");
+  fs.writeFileSync(path.join(binDir, "pip3"), `#!/bin/bash\nexec /usr/bin/pip3 "$@"\n`, "utf8");
+
+  fs.writeFileSync(path.join(binDir, "python3"), `#!/bin/bash
+case "\$1" in
+  -c)
+    TMPFILE="\${SANDBOX_HOME}/_run/_tmp_\$\$.py"
+    mkdir -p "\${SANDBOX_HOME}/_run"
+    echo "\$2" > "\$TMPFILE"
+    exec python3 "${pyRunner}" "\${SANDBOX_HOME}" "\$TMPFILE" "\${@:3}"
+    ;;
+  -m)
+    TMPFILE="\${SANDBOX_HOME}/_run/_tmp_\$\$.py"
+    mkdir -p "\${SANDBOX_HOME}/_run"
+    echo "import $2" > "\$TMPFILE"
+    exec python3 "${pyRunner}" "\${SANDBOX_HOME}" "\$TMPFILE" "\${@:3}"
+    ;;
+  *)
+    if [ -n "\$1" ] && [ -f "\$1" ]; then
+      exec python3 "${pyRunner}" "\${SANDBOX_HOME}" "\$1" "\${@:2}"
+    else
+      exec python3 "${pyRunner}" "\${SANDBOX_HOME}" "/dev/null"
+    fi
+    ;;
+esac
+`, "utf8");
+
+  fs.writeFileSync(path.join(binDir, "python"), `#!/bin/bash\nexec "\${BASH_SOURCE_DIR}/python3" "$@"\n`, "utf8");
+
+  fs.writeFileSync(path.join(binDir, "node"), `#!/bin/bash
+if [ -n "\$1" ] && [ -f "\$1" ]; then
+  exec node "${jsRunner}" "\${SANDBOX_HOME}" "\$1" "\${@:2}"
+else
+  TMPFILE="\${SANDBOX_HOME}/_run/_tmp_\$\$.js"
+  mkdir -p "\${SANDBOX_HOME}/_run"
+  echo "\$*" > "\$TMPFILE"
+  exec node "${jsRunner}" "\${SANDBOX_HOME}" "\$TMPFILE"
+fi
+`, "utf8");
+
+  fs.writeFileSync(path.join(binDir, "php"), `#!/bin/bash
+if [ -n "\$1" ] && [ -f "\$1" ]; then
+  exec php "${phpRunner}" "\${SANDBOX_HOME}" "\$1" "\${@:2}"
+else
+  echo "Usage: php <script.php>"
+  exit 1
+fi
+`, "utf8");
+
+  for (const f of ["pip", "pip3", "python3", "python", "node", "php"]) {
+    try { fs.chmodSync(path.join(binDir, f), 0o755); } catch {}
+  }
 
   const sandboxShell = path.join(baseDir, ".sandbox-shell.sh");
   const shellContent = `#!/bin/bash
 export SANDBOX_HOME="${baseDir}"
 export SANDBOX_ID="${id}"
 export SANDBOX_USER="${name}"
-export PATH="${baseDir}/bin:/home/runner/.venv/bin:/home/runner/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH="${baseDir}/bin:/usr/bin:/bin"
 export PIP_REQUIRE_VIRTUALENV=false
 export PIP_CONFIG_FILE="${baseDir}/.config/pip/pip.conf"
 export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]user_${name}\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
 cd "${baseDir}" || exit 1
-
-# Upgrade pip to latest
-python3 -m pip install --upgrade pip setuptools wheel 2>/dev/null || true
-# Ensure pip.conf exists
-mkdir -p "${baseDir}/.config/pip" 2>/dev/null
-if [ ! -f "${baseDir}/.config/pip/pip.conf" ]; then
-  printf "[global]\nbreak-system-packages = true\n" > "${baseDir}/.config/pip/pip.conf"
-fi
-# Create python → python3 symlink if missing
-if ! command -v python &>/dev/null; then
-  ln -sf /usr/bin/python3 "\${HOME}/bin/python" 2>/dev/null || true
-fi
 ulimit -S -t ${limits?.cpu_limit ? Math.round(300 * (limits.cpu_limit / 100)) : 300} 2>/dev/null
 ulimit -S -n 2048 2>/dev/null
 ulimit -S -u 200 2>/dev/null
-${limits?.ram_limit ? `ulimit -v $(( ${limits.ram_limit} / 1024 )) 2>/dev/null  # User RAM limit` : "ulimit -S -v unlimited 2>/dev/null"}
-${limits?.disk_limit ? `ulimit -S -f $(( ${limits.disk_limit} / 512 )) 2>/dev/null  # User disk limit` : "ulimit -S -f 102400 2>/dev/null"}
-# Activate Python venv
-if [ -f /home/runner/.venv/bin/activate ]; then
-  source /home/runner/.venv/bin/activate 2>/dev/null
-fi
-BLOCKED=(sudo su chroot docker docker-compose systemctl service journalctl shutdown reboot poweroff halt init mount umount fdisk mkfs dd passwd useradd usermod groupadd modprobe insmod rmmod lsmod iptables ip6tables ufw firewalld crontab at batch nsenter unshare cgexec lxc podman nc ncat netcat socat telnet)
-ESC_BLOCKED=(cd.. cd\ ..)
+${limits?.ram_limit ? `ulimit -v $(( ${limits.ram_limit} / 1024 )) 2>/dev/null` : "ulimit -S -v unlimited 2>/dev/null"}
+${limits?.disk_limit ? `ulimit -S -f $(( ${limits.disk_limit} / 512 )) 2>/dev/null` : "ulimit -S -f 102400 2>/dev/null"}
+BLOCKED=(sudo su chroot docker docker-compose systemctl service journalctl shutdown reboot poweroff halt init mount umount fdisk mkfs dd passwd useradd usermod groupadd modprobe insmod rmmod lsmod iptables ip6tables ufw firewalld crontab at batch nsenter unshare cgexec lxc podman nc ncat netcat socat telnet curl wget)
 preexec() {
   local cmd="$1"
   local base="\${cmd%% *}"
@@ -126,12 +163,6 @@ preexec() {
     target="\$(eval echo "\$cmd" 2>/dev/null)"
     if [[ "\$target" != "\${SANDBOX_HOME}"* && "\$target" != "."* && "\$target" != "\$HOME"* ]]; then
       echo -e "\\e[1;31m⛔ BLOCKED: Cannot escape sandbox directory\\e[0m"
-      return 1
-    fi
-  fi
-  if [[ "\$lower" == python3\ -c* || "\$lower" == python\ -c* || "\$lower" == perl\ -e* || "\$lower" == ruby\ -e* ]]; then
-    if [[ "\$cmd" == *"os.system"* || "\$cmd" == *"subprocess"* || "\$cmd" == *"open(\"/"* || "\$cmd" == *"eval("* || "\$cmd" == *"exec("* ]]; then
-      echo -e "\\e[1;31m⛔ BLOCKED: System calls not allowed in sandbox\\e[0m"
       return 1
     fi
   fi
@@ -386,9 +417,8 @@ cf-tunnel() {
 export SANDBOX_HOME="${baseDir}"
 export SANDBOX_ID="${id}"
 export SANDBOX_USER="${name}"
-export PATH="${baseDir}/bin:/home/runner/.venv/bin:/home/runner/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH="${baseDir}/bin:/usr/bin:/bin"
 export PIP_REQUIRE_VIRTUALENV=false
-source /home/runner/.venv/bin/activate 2>/dev/null
 source "\${SANDBOX_HOME}/.sandboxrc" 2>/dev/null
 export PS1="\\[\\e[38;5;46m\\]┌──(\\[\\e[1m\\]\\[\\e[38;5;226m\\]user_${name}\\[\\e[0m\\]\\[\\e[38;5;46m\\]㉿\\[\\e[38;5;226m\\]serverhub\\[\\e[0m\\]\\[\\e[38;5;46m\\])-[\\[\\e[38;5;87m\\]\\w\\[\\e[0m\\]\\[\\e[38;5;46m\\]]\\[\\e[0m\\]\\n\\[\\e[38;5;46m\\]└─\\[\\e[0m\\]$ "
 `, "utf8");

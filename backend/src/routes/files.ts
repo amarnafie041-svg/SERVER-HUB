@@ -64,9 +64,42 @@ const BLOCKED_SYSTEM_PATHS = new Set([
   "/var/log", "/var/run", "/var/lib", "/run", "/opt", "/srv", "/usr/local/bin",
 ]);
 
+const DANGEROUS_EXTENSIONS = new Set([".py", ".sh", ".bash", ".php", ".js", ".ts", ".pl", ".rb"]);
+
 function isBlockedPath(resolvedPath: string): boolean {
   for (const blocked of BLOCKED_SYSTEM_PATHS) {
     if (resolvedPath === blocked || resolvedPath.startsWith(blocked + "/")) return true;
+  }
+  return false;
+}
+
+function isSymlink(filePath: string): boolean {
+  try {
+    const stat = fs.lstatSync(filePath);
+    return stat.isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+function hasSymlinkTraversal(filePath: string, baseDir: string): boolean {
+  let current = filePath;
+  const parts: string[] = [];
+  while (current && current !== baseDir && current !== path.dirname(current)) {
+    parts.unshift(path.basename(current));
+    current = path.dirname(current);
+  }
+  let checkPath = baseDir;
+  for (const part of parts) {
+    checkPath = path.join(checkPath, part);
+    if (isSymlink(checkPath)) {
+      try {
+        const realTarget = fs.realpathSync(checkPath);
+        if (!realTarget.startsWith(baseDir)) return true;
+      } catch {
+        return true;
+      }
+    }
   }
   return false;
 }
@@ -245,6 +278,8 @@ router.get("/files/read", authenticate, async (req: Request, res: Response): Pro
     const resolved = resolveUserPath(filePath, userId);
     if (!resolved) { res.status(400).json({ error: "Invalid path" }); return; }
     if (isBlockedPath(resolved)) { res.status(403).json({ error: "Access denied" }); return; }
+    const userBase = getUserBaseDir(userId);
+    if (hasSymlinkTraversal(resolved, userBase)) { res.status(403).json({ error: "Symlink escape blocked" }); return; }
     if (!fs.existsSync(resolved)) { res.status(404).json({ error: "File not found" }); return; }
     const stat = fs.statSync(resolved);
     if (stat.isDirectory()) { res.status(400).json({ error: "Cannot read directory" }); return; }
@@ -283,6 +318,8 @@ router.post("/files/write", authenticate, async (req: Request, res: Response): P
     const resolved = resolveUserPath(filePath, userId);
     if (!resolved) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
     if (isBlockedPath(resolved)) { res.status(403).json({ success: false, message: "Access denied" }); return; }
+    const userBase = getUserBaseDir(userId);
+    if (hasSymlinkTraversal(resolved, userBase)) { res.status(403).json({ success: false, message: "Symlink escape blocked" }); return; }
     fs.mkdirSync(path.dirname(resolved), { recursive: true });
     fs.writeFileSync(resolved, content, "utf8");
     res.json({ success: true, message: "File saved" });
@@ -311,6 +348,8 @@ router.delete("/files/delete", authenticate, async (req: Request, res: Response)
     const resolved = resolveUserPath(filePath, userId);
     if (!resolved) { res.status(400).json({ success: false, message: "Invalid path" }); return; }
     if (isBlockedPath(resolved)) { res.status(403).json({ success: false, message: "Access denied" }); return; }
+    const userBase = getUserBaseDir(userId);
+    if (hasSymlinkTraversal(resolved, userBase)) { res.status(403).json({ success: false, message: "Symlink escape blocked" }); return; }
     if (!fs.existsSync(resolved)) { res.status(404).json({ success: false, message: "File not found" }); return; }
     const stat = fs.statSync(resolved);
     if (stat.isDirectory()) {
@@ -759,11 +798,11 @@ router.post("/files/run", authenticate, async (req: Request, res: Response): Pro
       const child = spawn(cmd, cmdArgs, {
         cwd: baseDir,
         env: {
-          ...process.env,
           HOME: baseDir,
           SANDBOX_HOME: baseDir,
           TMPDIR: path.join(baseDir, "tmp"),
           PYTHONUNBUFFERED: "1",
+          PATH: path.join(baseDir, "bin") + ":/usr/bin:/bin",
         },
         timeout: TIMEOUT_MS,
         windowsHide: true,
