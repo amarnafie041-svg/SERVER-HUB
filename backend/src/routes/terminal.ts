@@ -162,9 +162,11 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
       res.status(500).json({ error: "Terminal not available" });
       return;
     }
+    const adminSandbox = sandboxManager.ensureUserSandbox(userId, username);
+    workDir = adminSandbox.homeDir;
     try {
       const { shell, args } = getShell();
-      const ptyProcess = ptyModule.spawn(shell, args, {
+      const ptyProcess = ptyModule.spawn(shell, ["-i", ...args], {
         name: "xterm-256color",
         cols: 80,
         rows: 24,
@@ -175,6 +177,14 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
           COLORTERM: "truecolor",
           LANG: "C.UTF-8",
           LC_ALL: "C.UTF-8",
+          HOME: workDir,
+          SANDBOX_HOME: workDir,
+          SANDBOX_ID: adminSandbox.id,
+          SANDBOX_USER: username,
+          PATH: workDir + "/bin:/home/runner/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          TMPDIR: workDir + "/tmp",
+          TMP: workDir + "/tmp",
+          TEMP: workDir + "/tmp",
         },
       });
 
@@ -301,7 +311,7 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
 
   try {
     const { shell, args } = getShell();
-    const ptyProcess = ptyModule.spawn(shell, args, {
+    const ptyProcess = ptyModule.spawn(shell, ["-i", ...args], {
       name: "xterm-256color",
       cols: 80,
       rows: 24,
@@ -320,6 +330,7 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
         PIP_REQUIRE_VIRTUALENV: "false",
         SANDBOX_HOME: homeDir,
         SANDBOX_ID: sandboxId,
+        SANDBOX_USER: username,
       },
     });
 
