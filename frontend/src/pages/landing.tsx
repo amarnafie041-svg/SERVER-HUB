@@ -253,7 +253,7 @@ export default function LandingPage() {
   const { lang, setLang } = useLang();
 
   const goRegister = useCallback(() => {
-    window.location.hash = "#/register";
+    window.location.hash = "#/login";
   }, []);
 
   const goLogin = useCallback(() => {
