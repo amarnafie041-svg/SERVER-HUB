@@ -8,6 +8,7 @@ import {
   Activity, Server, Cpu, HardDrive, Globe, Wifi,
   Zap, BarChart3, Eye, Settings, Lock,
   ShieldCheck, ShieldAlert,
+  Send, Bot, Link2, Unlink, FileDown, Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,10 +40,15 @@ export default function AdminPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<UserData | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [form, setForm] = useState({ username: "", password: "", display_name: "", role: "user", expires_days: "", disabled: false, cpu_limit: "", ram_limit: "", disk_limit: "" });
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "system">("overview");
+  const [form, setForm] = useState({ username: "", password: "", display_name: "", role: "user", expires_days: "", expires_hours: "", disabled: false, cpu_limit: "", ram_limit: "", disk_limit: "" });
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "system" | "telegram">("overview");
   const [systemStats, setSystemStats] = useState<any>(null);
   const [dockerStatus, setDockerStatus] = useState<{ available: boolean; containers: string[] } | null>(null);
+  const [tgConnected, setTgConnected] = useState(false);
+  const [tgToken, setTgToken] = useState("");
+  const [tgChatId, setTgChatId] = useState("");
+  const [tgLoading, setTgLoading] = useState(false);
+  const [tgSending, setTgSending] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -57,17 +63,58 @@ export default function AdminPage() {
     fetchUsers();
     fetchStats();
     fetch(`${BASE}/api/docker/status`).then((r) => r.json()).then(setDockerStatus).catch(() => {});
+    api.telegramStatus().then((s) => setTgConnected(s.connected)).catch(() => {});
     const i = setInterval(fetchStats, 5000);
     return () => clearInterval(i);
   }, []);
 
+  const connectTelegram = async () => {
+    if (!tgToken || !tgChatId) { toast({ title: t("error"), description: "Token and Chat ID required", variant: "destructive" }); return; }
+    setTgLoading(true);
+    try {
+      await api.telegramConnect(tgToken, tgChatId);
+      setTgConnected(true);
+      toast({ title: t("success"), description: "Bot connected successfully!" });
+    } catch (err: any) { toast({ title: t("error"), description: err.message, variant: "destructive" }); }
+    setTgLoading(false);
+  };
+
+  const disconnectTelegram = async () => {
+    setTgLoading(true);
+    try {
+      await api.telegramDisconnect();
+      setTgConnected(false);
+      setTgToken(""); setTgChatId("");
+      toast({ title: t("success"), description: "Bot disconnected" });
+    } catch (err: any) { toast({ title: t("error"), description: err.message, variant: "destructive" }); }
+    setTgLoading(false);
+  };
+
+  const sendUserFilesTelegram = async (userId: string, username: string) => {
+    setTgSending(userId);
+    try {
+      await api.telegramSendUserFiles(userId);
+      toast({ title: t("success"), description: `Files of ${username} sent to Telegram` });
+    } catch (err: any) { toast({ title: t("error"), description: err.message, variant: "destructive" }); }
+    setTgSending(null);
+  };
+
+  const sendAllFilesTelegram = async () => {
+    setTgSending("all");
+    try {
+      const res = await api.telegramSendAllFiles();
+      toast({ title: t("success"), description: `All users files sent! (${res.users_count} users)` });
+    } catch (err: any) { toast({ title: t("error"), description: err.message, variant: "destructive" }); }
+    setTgSending(null);
+  };
+
   const createUser = async () => {
     if (!form.username || !form.password) { toast({ title: t("error"), description: "Username and password required", variant: "destructive" }); return; }
     try {
-      await api.createUser({ username: form.username, password: form.password, display_name: form.display_name || form.username, role: form.role, expires_days: form.expires_days ? parseInt(form.expires_days) : undefined, cpu_limit: form.cpu_limit ? parseInt(form.cpu_limit) : null, ram_limit: form.ram_limit ? parseInt(form.ram_limit) : null, disk_limit: form.disk_limit ? parseInt(form.disk_limit) : null });
+      await api.createUser({ username: form.username, password: form.password, display_name: form.display_name || form.username, role: form.role, expires_days: form.expires_days ? parseInt(form.expires_days) : undefined, expires_hours: form.expires_hours ? parseInt(form.expires_hours) : undefined, cpu_limit: form.cpu_limit ? parseInt(form.cpu_limit) : null, ram_limit: form.ram_limit ? parseInt(form.ram_limit) : null, disk_limit: form.disk_limit ? parseInt(form.disk_limit) : null });
       toast({ title: t("success"), description: `User ${form.username} created` });
       setShowCreate(false);
-      setForm({ username: "", password: "", display_name: "", role: "user", expires_days: "", disabled: false, cpu_limit: "", ram_limit: "", disk_limit: "" });
+      setForm({ username: "", password: "", display_name: "", role: "user", expires_days: "", expires_hours: "", disabled: false, cpu_limit: "", ram_limit: "", disk_limit: "" });
       fetchUsers();
     } catch (err: any) { toast({ title: t("error"), description: err.message, variant: "destructive" }); }
   };
@@ -75,7 +122,7 @@ export default function AdminPage() {
   const updateUser = async () => {
     if (!editUser) return;
     try {
-      await api.updateUser(editUser.id, { display_name: form.display_name, role: form.role, disabled: form.disabled, cpu_limit: form.cpu_limit ? parseInt(form.cpu_limit) : null, ram_limit: form.ram_limit ? parseInt(form.ram_limit) : null, disk_limit: form.disk_limit ? parseInt(form.disk_limit) : null, ...(form.password ? { password: form.password } : {}), ...(form.expires_days !== "" ? { expires_days: form.expires_days === "0" ? null : parseInt(form.expires_days) } : {}) });
+      await api.updateUser(editUser.id, { display_name: form.display_name, role: form.role, disabled: form.disabled, cpu_limit: form.cpu_limit ? parseInt(form.cpu_limit) : null, ram_limit: form.ram_limit ? parseInt(form.ram_limit) : null, disk_limit: form.disk_limit ? parseInt(form.disk_limit) : null, ...(form.password ? { password: form.password } : {}), ...((form.expires_days !== "" || form.expires_hours !== "") ? { expires_days: form.expires_days ? parseInt(form.expires_days) : 0, expires_hours: form.expires_hours ? parseInt(form.expires_hours) : 0 } : {}) });
       toast({ title: t("success"), description: "User updated" });
       setEditUser(null);
       fetchUsers();
@@ -105,7 +152,7 @@ export default function AdminPage() {
     const diff = new Date(expires_at).getTime() - Date.now();
     return Math.max(0, Math.ceil(diff / 86400000));
   };
-  const openEdit = (u: UserData) => { setEditUser(u); setForm({ username: u.username, password: "", display_name: u.display_name, role: u.role, expires_days: "", disabled: u.disabled, cpu_limit: u.cpu_limit?.toString() || "", ram_limit: u.ram_limit?.toString() || "", disk_limit: u.disk_limit?.toString() || "" }); };
+  const openEdit = (u: UserData) => { setEditUser(u); setForm({ username: u.username, password: "", display_name: u.display_name, role: u.role, expires_days: "", expires_hours: "", disabled: u.disabled, cpu_limit: u.cpu_limit?.toString() || "", ram_limit: u.ram_limit?.toString() || "", disk_limit: u.disk_limit?.toString() || "" }); };
 
   const totalUsers = users.length;
   const activeUsers = users.filter((u) => !u.disabled).length;
@@ -147,7 +194,7 @@ export default function AdminPage() {
 
       {/* Tab Bar */}
       <div className="flex gap-1 p-1 rounded-xl border overflow-x-auto" style={{ background: "#140a24", borderColor: "rgba(139,92,246,0.2)" }}>
-        {([["overview", "Overview", BarChart3], ["users", "Users", Users], ["system", "System", Server]] as const).map(([key, label, Icon]) => (
+        {([["overview", "Overview", BarChart3], ["users", "Users", Users], ["system", "System", Server], ["telegram", "Telegram", Bot]] as const).map(([key, label, Icon]) => (
           <button key={key} onClick={() => setActiveTab(key)}
             className={`flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all flex-1 justify-center whitespace-nowrap ${
               activeTab === key ? "bg-primary/20 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
@@ -414,6 +461,88 @@ export default function AdminPage() {
         </div>
       )}
 
+      {activeTab === "telegram" && (
+        <div className="space-y-4">
+          {/* Connection Card */}
+          <div className="rounded-xl border p-4 md:p-5" style={{ background: "#140a24", borderColor: "rgba(139,92,246,0.15)" }}>
+            <div className="flex items-center gap-2 mb-4">
+              <Bot className="w-5 h-5 text-accent" />
+              <span className="font-semibold text-sm">Bot Connection</span>
+              {tgConnected && <Badge className="ml-auto bg-green-500/20 text-green-400 border-green-500/30 text-[10px]"><Link2 className="w-3 h-3 mr-1 inline" />Connected</Badge>}
+              {!tgConnected && <Badge className="ml-auto bg-zinc-500/20 text-zinc-400 border-zinc-500/30 text-[10px]"><Unlink className="w-3 h-3 mr-1 inline" />Disconnected</Badge>}
+            </div>
+            {tgConnected ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <Check className="w-4 h-4 text-green-400 shrink-0" />
+                  <span className="text-sm text-green-300">Bot connected and ready to send files</span>
+                </div>
+                <Button onClick={disconnectTelegram} disabled={tgLoading} variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 gap-2">
+                  <Unlink className="w-4 h-4" /> Disconnect Bot
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-zinc-400 mb-1 block">Bot Token</label>
+                  <Input value={tgToken} onChange={(e) => setTgToken(e.target.value)} placeholder="123456:ABC-DEF..." className="bg-[#1d1033] border-[rgba(139,92,246,0.3)] text-white font-mono text-xs" />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-400 mb-1 block">Chat ID</label>
+                  <Input value={tgChatId} onChange={(e) => setTgChatId(e.target.value)} placeholder="123456789" className="bg-[#1d1033] border-[rgba(139,92,246,0.3)] text-white font-mono text-xs" />
+                </div>
+                <Button onClick={connectTelegram} disabled={tgLoading} className="bg-primary hover:bg-primary/90 gap-2">
+                  <Link2 className="w-4 h-4" /> {tgLoading ? "Connecting..." : "Connect Bot"}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Send Files */}
+          {tgConnected && (
+            <div className="rounded-xl border p-4 md:p-5" style={{ background: "#140a24", borderColor: "rgba(139,92,246,0.15)" }}>
+              <div className="flex items-center gap-2 mb-4">
+                <Send className="w-5 h-5 text-accent" />
+                <span className="font-semibold text-sm">Send Files to Bot</span>
+              </div>
+
+              {/* Send All Button */}
+              <div className="mb-4">
+                <Button onClick={sendAllFilesTelegram} disabled={tgSending === "all"} className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white gap-2 h-10">
+                  {tgSending === "all" ? (
+                    <><RefreshCw className="w-4 h-4 animate-spin" /> Sending...</>
+                  ) : (
+                    <><Package className="w-4 h-4" /> Send ALL Users Files (Zip)</>
+                  )}
+                </Button>
+              </div>
+
+              {/* Per User */}
+              <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-2 font-semibold">Send Per User</div>
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {users.filter((u) => u.role !== "admin").map((u) => (
+                  <div key={u.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: "linear-gradient(135deg,#6d28d9,#a855f7)" }}>
+                        {u.display_name[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-xs text-white">{u.display_name}</p>
+                        <p className="text-[10px] text-zinc-500 font-mono">@{u.username}</p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => sendUserFilesTelegram(u.id, u.username)} disabled={tgSending === u.id} className="h-7 px-2 text-[10px] gap-1 text-accent hover:bg-accent/10">
+                      {tgSending === u.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <FileDown className="w-3 h-3" />}
+                      {tgSending === u.id ? "Sending..." : "Send"}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {showCreate && (
         <Modal title={t("create_user")} onClose={() => setShowCreate(false)}>
           <UserForm form={form} setForm={setForm} isCreate t={t} />
@@ -515,8 +644,22 @@ function UserForm({ form, setForm, isCreate, t }: any) {
         </select>
       </div>
       <div>
-        <label className="text-xs text-zinc-400 mb-1 block">{t("expires_in")} ({t("days")}) — 0 = {t("unlimited")}</label>
-        <Input type="number" min="0" value={form.expires_days} onChange={(e: any) => setForm((p: any) => ({ ...p, expires_days: e.target.value }))} placeholder={t("no_expiry")} className="bg-[#1d1033] border-[rgba(139,92,246,0.3)] text-white" />
+        <label className="text-xs text-zinc-400 mb-1 block">{t("expires_in")}</label>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <div className="relative">
+              <Input type="number" min="0" value={form.expires_days} onChange={(e: any) => setForm((p: any) => ({ ...p, expires_days: e.target.value }))} placeholder="0" className="bg-[#1d1033] border-[rgba(139,92,246,0.3)] text-white pr-12" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">{t("days")}</span>
+            </div>
+          </div>
+          <div>
+            <div className="relative">
+              <Input type="number" min="0" max="23" value={form.expires_hours} onChange={(e: any) => setForm((p: any) => ({ ...p, expires_hours: e.target.value }))} placeholder="0" className="bg-[#1d1033] border-[rgba(139,92,246,0.3)] text-white pr-12" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">hours</span>
+            </div>
+          </div>
+        </div>
+        <p className="text-[10px] text-zinc-600 mt-1">0 / 0 = {t("unlimited")}</p>
       </div>
       <div className="border-t pt-3 mt-3" style={{ borderColor: "rgba(139,92,246,0.15)" }}>
         <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Resource Limits</p>

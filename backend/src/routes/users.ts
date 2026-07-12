@@ -13,15 +13,25 @@ router.get("/users", authenticate, requireAdmin, async (_req: Request, res: Resp
   res.json(users);
 });
 
+function computeExpiry(expires_days?: number | null, expires_hours?: number | null): string | null {
+  const now = Date.now();
+  let ms = 0;
+  if (expires_days && expires_days > 0) ms += expires_days * 86400000;
+  if (expires_hours && expires_hours > 0) ms += expires_hours * 3600000;
+  if (ms === 0) return null;
+  return new Date(now + ms).toISOString();
+}
+
 router.post("/users", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { username, password, role, display_name, expires_at, cpu_limit, ram_limit, disk_limit } = req.body;
+    const { username, password, role, display_name, expires_days, expires_hours, cpu_limit, ram_limit, disk_limit } = req.body;
     if (!username || !password) { res.status(400).json({ error: "Username and password required" }); return; }
     const existing = storage.getUserByUsername(username);
     if (existing) { res.status(409).json({ error: "Username already exists" }); return; }
+    const expires_at = computeExpiry(expires_days, expires_hours);
     const user = storage.createUser({
       username, role: role || "user", display_name: display_name || username,
-      password_hash: bcrypt.hashSync(password, 10), avatar: null, expires_at: expires_at || null, disabled: false,
+      password_hash: bcrypt.hashSync(password, 10), avatar: null, expires_at, disabled: false,
       cpu_limit: cpu_limit ?? null, ram_limit: ram_limit ?? null, disk_limit: disk_limit ?? null,
       custom_subdomain: null, custom_port: null,
     });
@@ -35,8 +45,11 @@ router.post("/users", authenticate, requireAdmin, async (req: Request, res: Resp
 
 router.put("/users/:id", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { password, ...updates } = req.body;
+    const { password, expires_days, expires_hours, ...updates } = req.body;
     if (password) updates.password_hash = bcrypt.hashSync(password, 10);
+    if (expires_days !== undefined || expires_hours !== undefined) {
+      updates.expires_at = computeExpiry(expires_days, expires_hours);
+    }
     const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const updated = storage.updateUser(rawId, updates);
     if (!updated) { res.status(404).json({ error: "User not found" }); return; }

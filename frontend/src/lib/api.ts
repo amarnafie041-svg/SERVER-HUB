@@ -128,6 +128,17 @@ export const api = {
   getHostingStatus: () => request<any>("/api/hosting/status"),
   getHostingLanguages: () => request<any>("/api/hosting/languages"),
   getHostingTemplates: () => request<any>("/api/hosting/templates"),
+
+  telegramConnect: (bot_token: string, chat_id: string) =>
+    request<any>("/api/telegram/connect", { method: "POST", body: JSON.stringify({ bot_token, chat_id }) }),
+  telegramDisconnect: () =>
+    request<any>("/api/telegram/disconnect", { method: "POST" }),
+  telegramStatus: () =>
+    request<{ connected: boolean; chat_id: string; has_token: boolean }>("/api/telegram/status"),
+  telegramSendUserFiles: (user_id: string) =>
+    request<any>("/api/telegram/send-user-files", { method: "POST", body: JSON.stringify({ user_id }) }),
+  telegramSendAllFiles: () =>
+    request<any>("/api/telegram/send-all-files", { method: "POST" }),
 };
 
 export function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
