@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import Editor from "@monaco-editor/react";
+import Editor, { loader } from "@monaco-editor/react";
 import {
   ChevronRight, ChevronDown, ChevronLeft, Folder, FolderOpen,
   FileText, FileCode, FileJson, Image, Save, Plus, FolderPlus,
@@ -10,6 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
+
+loader.config({
+  paths: {
+    vs: "https://unpkg.com/monaco-editor@0.52.2/min/vs",
+  },
+});
 
 const HIDDEN_SYSTEM_ITEMS = new Set([
   ".cache", ".config", ".local", "bin", "projects", "tmp",
