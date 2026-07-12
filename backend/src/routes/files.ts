@@ -200,6 +200,22 @@ async function ensureUserIsolation(userId: string, username: string): Promise<vo
   }
 }
 
+router.get("/files/home", authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.userId || "";
+    const username = req.user?.username || "";
+    await ensureUserIsolation(userId, username);
+    if (dockerManager.isAvailable) {
+      res.json({ home: "/home/runner" });
+      return;
+    }
+    const home = sandboxManager.getUserSandboxHome(userId);
+    res.json({ home: home || "/home/runner" });
+  } catch {
+    res.json({ home: "/home/runner" });
+  }
+});
+
 router.get("/files/list", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.user?.username || "";
@@ -240,11 +256,7 @@ router.get("/files/list", authenticate, async (req: Request, res: Response): Pro
       .sort((a, b) => {
         if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
         return a.name.localeCompare(b.name);
-      })
-      .map((item) => ({
-        ...item,
-        path: item.path.replace(dirPath, reqPath),
-      }));
+      });
     res.json({ path: reqPath, items });
   } catch (err) {
     logger.error({ err }, "Failed to list files");

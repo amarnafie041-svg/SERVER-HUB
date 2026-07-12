@@ -45,6 +45,7 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
 }
 
 export default function FilesPage() {
+  const [home, setHome] = useState(HOME);
   const [currentPath, setCurrentPath] = useState(HOME);
   const [pathHistory, setPathHistory] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -74,6 +75,14 @@ export default function FilesPage() {
   const isSearching = searchQuery.trim().length > 0;
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  useEffect(() => {
+    api.getFileHome().then((data) => {
+      const h = data.home || HOME;
+      setHome(h);
+      setCurrentPath(h);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -297,10 +306,10 @@ export default function FilesPage() {
       <div className="flex items-center gap-2 px-4 py-2.5 border-b shrink-0 flex-wrap gap-y-2" style={{ background: "#140a24", borderColor: "rgba(139,92,246,0.2)" }}>
         <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="icon" onClick={goBack} disabled={pathHistory.length === 0} className="h-7 w-7 text-zinc-500 hover:text-white disabled:opacity-30"><ArrowLeft className="w-3.5 h-3.5" /></Button>
-          <Button variant="ghost" size="icon" onClick={() => { setCurrentPath(HOME); setPathHistory([]); }} className="h-7 w-7 text-zinc-500 hover:text-white"><Home className="w-3.5 h-3.5" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => { setCurrentPath(home); setPathHistory([]); }} className="h-7 w-7 text-zinc-500 hover:text-white"><Home className="w-3.5 h-3.5" /></Button>
         </div>
         <div className="flex items-center gap-0.5 text-xs font-mono flex-1 min-w-0 overflow-x-auto scrollbar-none">
-          <button onClick={() => { setCurrentPath("/"); setPathHistory([]); }} className="text-zinc-600 hover:text-white px-1 transition-colors shrink-0">/</button>
+          <button onClick={() => { setCurrentPath(home); setPathHistory([]); }} className="text-zinc-600 hover:text-white px-1 transition-colors shrink-0">/</button>
           {breadcrumbs.map((seg, i) => {
             const path = "/" + breadcrumbs.slice(0, i + 1).join("/");
             const isLast = i === breadcrumbs.length - 1;

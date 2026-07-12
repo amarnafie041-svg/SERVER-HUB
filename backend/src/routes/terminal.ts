@@ -111,11 +111,17 @@ function isEscapeAttempt(input: string, sandboxHome: string): boolean {
     /\/dev\//,
     /\/var\/log/,
     /\/boot/,
-    /\/home\/runner\/[^u]/,
-    /\/home\/runner\/user_(?!.*sandbox)/,
   ];
   for (const pat of pathPatterns) {
     if (pat.test(lower)) return true;
+  }
+
+  const pathTokenRegex = /\/[^\s"']+/g;
+  let pathMatch;
+  while ((pathMatch = pathTokenRegex.exec(lower)) !== null) {
+    const p = pathMatch[0];
+    if (p.startsWith("/home/runner") && !sandboxHome) return true;
+    if (p.startsWith("/home/runner") && sandboxHome && !p.startsWith(sandboxHome.toLowerCase())) return true;
   }
 
   const dangerPythonPatterns = [
@@ -126,12 +132,13 @@ function isEscapeAttempt(input: string, sandboxHome: string): boolean {
     /__import__\s*\(\s*['\"]os['\"]\s*\)/,
     /eval\s*\(\s*['\"]__import__/,
     /exec\s*\(\s*['\"]import/,
-    /open\s*\(\s*['\"]\/(?!home\/runner)/,
   ];
   if (/\b(python|python3|perl|ruby|node)\b/.test(base)) {
     for (const pat of dangerPythonPatterns) {
       if (pat.test(trimmed)) return true;
     }
+    const openMatch = trimmed.match(/open\s*\(\s*['"]([^'"]+)['"]/);
+    if (openMatch && openMatch[1].startsWith("/") && !openMatch[1].startsWith(sandboxHome)) return true;
   }
 
   return false;
@@ -232,6 +239,9 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
     }
     const adminSandbox = sandboxManager.ensureUserSandbox(userId, username);
     workDir = adminSandbox.homeDir;
+    session.sandboxId = adminSandbox.id;
+    session.sandboxHome = adminSandbox.homeDir;
+    session.isolated = true;
     try {
       const { shell, args } = getShell();
       const ptyProcess = ptyModule.spawn(shell, ["-i", ...args], {
@@ -275,17 +285,17 @@ terminalRouterAPI.post("/terminal/sessions", authenticate, async (req: Request, 
         user: username,
         action: "terminal.create",
         target: `session/${id}`,
-        details: `Admin terminal session "${name}" created (Full Access)`,
+        details: `Admin terminal session "${name}" created (Sandbox)`,
         status: "success",
       });
-      logger.info({ id, username, role: "admin", isolated: false }, "Admin terminal session created (Full Access)");
+      logger.info({ id, username, role: "admin", isolated: true }, "Admin terminal session created (Sandbox)");
       sessions.set(id, session);
       res.status(201).json({
         id,
         name: session.name,
         created_at: session.created_at,
         status: session.status,
-        isolated: false,
+        isolated: true,
       });
     } catch (err) {
       logger.error({ err }, "Admin terminal failed");
