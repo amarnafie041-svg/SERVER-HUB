@@ -74,40 +74,46 @@ case "\$1" in
     TMPFILE="\${SANDBOX_HOME}/_run/_tmp_\$\$.py"
     mkdir -p "\${SANDBOX_HOME}/_run"
     echo "\$2" > "\$TMPFILE"
-    exec python3 "${pyRunner}" "\${SANDBOX_HOME}" "\$TMPFILE" "\${@:3}"
+    exec /usr/bin/python3 "${pyRunner}" "\${SANDBOX_HOME}" "\$TMPFILE" "\${@:3}"
     ;;
   -m)
     TMPFILE="\${SANDBOX_HOME}/_run/_tmp_\$\$.py"
     mkdir -p "\${SANDBOX_HOME}/_run"
     echo "import $2" > "\$TMPFILE"
-    exec python3 "${pyRunner}" "\${SANDBOX_HOME}" "\$TMPFILE" "\${@:3}"
+    exec /usr/bin/python3 "${pyRunner}" "\${SANDBOX_HOME}" "\$TMPFILE" "\${@:3}"
     ;;
   *)
     if [ -n "\$1" ] && [ -f "\$1" ]; then
-      exec python3 "${pyRunner}" "\${SANDBOX_HOME}" "\$1" "\${@:2}"
+      exec /usr/bin/python3 "${pyRunner}" "\${SANDBOX_HOME}" "\$1" "\${@:2}"
     else
-      exec python3 "${pyRunner}" "\${SANDBOX_HOME}" "/dev/null"
+      exec /usr/bin/python3 "${pyRunner}" "\${SANDBOX_HOME}" "/dev/null"
     fi
     ;;
 esac
 `, "utf8");
 
-  fs.writeFileSync(path.join(binDir, "python"), `#!/bin/bash\nexec "\${BASH_SOURCE_DIR}/python3" "$@"\n`, "utf8");
+  fs.writeFileSync(path.join(binDir, "python"), `#!/bin/bash
+if [ -n "\$1" ] && [ -f "\$1" ]; then
+  exec /usr/bin/python3 "${pyRunner}" "\${SANDBOX_HOME}" "\$1" "\${@:2}"
+else
+  exec /usr/bin/python3 "${pyRunner}" "\${SANDBOX_HOME}" "/dev/null"
+fi
+`, "utf8");
 
   fs.writeFileSync(path.join(binDir, "node"), `#!/bin/bash
 if [ -n "\$1" ] && [ -f "\$1" ]; then
-  exec node "${jsRunner}" "\${SANDBOX_HOME}" "\$1" "\${@:2}"
+  exec /usr/bin/node "${jsRunner}" "\${SANDBOX_HOME}" "\$1" "\${@:2}"
 else
   TMPFILE="\${SANDBOX_HOME}/_run/_tmp_\$\$.js"
   mkdir -p "\${SANDBOX_HOME}/_run"
   echo "\$*" > "\$TMPFILE"
-  exec node "${jsRunner}" "\${SANDBOX_HOME}" "\$TMPFILE"
+  exec /usr/bin/node "${jsRunner}" "\${SANDBOX_HOME}" "\$TMPFILE"
 fi
 `, "utf8");
 
   fs.writeFileSync(path.join(binDir, "php"), `#!/bin/bash
 if [ -n "\$1" ] && [ -f "\$1" ]; then
-  exec php "${phpRunner}" "\${SANDBOX_HOME}" "\$1" "\${@:2}"
+  exec /usr/bin/php "${phpRunner}" "\${SANDBOX_HOME}" "\$1" "\${@:2}"
 else
   echo "Usage: php <script.php>"
   exit 1
