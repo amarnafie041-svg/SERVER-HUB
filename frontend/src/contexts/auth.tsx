@@ -56,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("sh_token", data.token);
     setToken(data.token);
     setUser(data.user);
+    window.location.hash = "#/";
   }, []);
 
   const logout = useCallback(async () => {
