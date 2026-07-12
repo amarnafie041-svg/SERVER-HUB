@@ -135,19 +135,22 @@ export default function EditorPage() {
     };
   }, []);
 
+  const tabsRef = useRef<OpenTab[]>([]);
+  tabsRef.current = tabs;
+
   const openFile = useCallback(async (node: FileNode) => {
     if (node.is_dir) return;
-    const existing = tabs.find((t) => t.path === node.path);
+    const existing = tabsRef.current.find((t) => t.path === node.path);
     if (existing) { setActiveTabPath(node.path); return; }
     try {
       const data = await api.readFile(node.path);
       const ext = node.name.split(".").pop() || "";
-      const langMap: Record<string, string> = { ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript", py: "python", json: "json", html: "html", css: "css", md: "markdown", yaml: "yaml" };
+      const langMap: Record<string, string> = { ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript", py: "python", json: "json", html: "html", css: "css", md: "markdown", yaml: "yaml", sh: "shell", php: "php", txt: "plaintext" };
       const language = langMap[ext] || "plaintext";
-      setTabs((prev) => [...prev, { path: node.path, name: node.name, content: data.content, language, modified: false }]);
+      setTabs((prev) => [...prev, { path: node.path, name: node.name, content: data.content ?? "", language, modified: false }]);
       setActiveTabPath(node.path);
-    } catch { toast({ title: "Failed to open file", variant: "destructive" }); }
-  }, [tabs, toast]);
+    } catch (e) { console.error("Failed to open file:", e); toast({ title: "Failed to open file", variant: "destructive" }); }
+  }, [toast]);
 
   const handleEditorChange = useCallback((value: string | undefined) => {
     if (value == null || !activeTabPath) return;
