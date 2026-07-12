@@ -130,7 +130,311 @@ function listDirTree(dirPath: string, prefix: string = ""): string {
   return result;
 }
 
-// Handle Telegram updates (webhook)
+// ===================== INLINE KEYBOARD HELPERS =====================
+
+const COLORS = {
+  primary: "primary" as const,
+  secondary: "secondary" as const,
+  destructive: "destructive" as const,
+};
+
+async function sendWithKeyboard(
+  token: string, chatId: string, text: string,
+  keyboard: any[][], extra?: Record<string, any>
+): Promise<boolean> {
+  return sendTelegramMsg(token, chatId, text, {
+    reply_markup: { inline_keyboard: keyboard },
+    ...extra,
+  });
+}
+
+function btn(text: string, callbackData: string, color?: "primary" | "secondary" | "destructive") {
+  const b: any = { text, callback_data: callbackData };
+  if (color) b.button_color = color;
+  return b;
+}
+
+// ===================== CALLBACK QUERY HANDLER =====================
+
+async function handleCallbackQuery(token: string, allowedChatId: string, query: any): Promise<void> {
+  const chatId = String(query.message?.chat?.id || "");
+  const data: string = query.data || "";
+  if (chatId !== allowedChatId) return;
+
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ callback_query_id: query.id }),
+    });
+  } catch {}
+
+  if (data === "menu:main") {
+    const target = getTargetSandbox();
+    await sendWithKeyboard(token, chatId,
+      `🖥 *SERVER HUB*\n\n👤 المستخدم الحالي: *${target?.username || "admin"}*`,
+      [
+        [btn("👥 المستخدمين", "users:list", "primary"), btn("📂 الملفات", "files:current", "primary")],
+        [btn("📤 رفع ملف", "upload:info", "secondary"), btn("📊 الحالة", "status:show", "secondary")],
+        [btn("🗑 تفريغ الكاش", "cache:clear", "destructive")],
+      ]
+    );
+    return;
+  }
+
+  if (data === "users:list") {
+    const users = storage.getUsers();
+    if (users.length === 0) {
+      await sendWithKeyboard(token, chatId, "❌ لا يوجد مستخدمين", [[btn("🔙 رجوع", "menu:main", "secondary")]]);
+      return;
+    }
+    const rows: any[][] = [];
+    for (const u of users) {
+      const home = sandboxManager.getUserSandboxHome(u.id);
+      let fileCount = 0, totalSize = 0;
+      if (home && fs.existsSync(home)) {
+        try {
+          const walk = (dir: string) => {
+            for (const i of fs.readdirSync(dir)) {
+              if (i.startsWith(".") || i === "bin" || i === "tmp" || i === "node_modules") continue;
+              const p = path.join(dir, i);
+              const st = fs.statSync(p);
+              if (st.isDirectory()) walk(p);
+              else { fileCount++; totalSize += st.size; }
+            }
+          };
+          walk(home);
+        } catch {}
+      }
+      const role = u.role === "admin" ? "👑" : "👤";
+      rows.push([btn(`${role} ${u.display_name} (${fileCount} 📄 | ${formatSize(totalSize)})`, `user:${u.username}`, "primary")]);
+    }
+    rows.push([btn("🔙 رجوع", "menu:main", "secondary")]);
+    await sendWithKeyboard(token, chatId, "👥 *جميع المستخدمين:*", rows);
+    return;
+  }
+
+  if (data.startsWith("user:")) {
+    const username = data.split(":")[1];
+    const user = storage.getUserByUsername(username);
+    if (!user) {
+      await sendWithKeyboard(token, chatId, `❌ المستخدم ${username} غير موجود`, [[btn("🔙 رجوع", "users:list", "secondary")]]);
+      return;
+    }
+    await sendWithKeyboard(token, chatId, `👤 *${user.display_name}* (@${user.username})\n👑 الدور: ${user.role === "admin" ? "مدمن" : "مستخدم"}`,
+      [
+        [btn("📂 عرض الملفات", `files:${username}`, "primary"), btn("⬇️ تحميل الكل", `getall:${username}`, "primary")],
+        [btn("🎯 تحديد كمستهدف", `settarget:${username}`, "secondary")],
+        [btn("🔙 رجوع", "users:list", "secondary")],
+      ]
+    );
+    return;
+  }
+
+  if (data === "files:current") {
+    const target = getTargetSandbox();
+    if (!target) {
+      await sendWithKeyboard(token, chatId, "❌ لا يوجد مستخدم", [[btn("🔙 رجوع", "menu:main", "secondary")]]);
+      return;
+    }
+    const user = storage.getUserByUsername(target.username);
+    if (user && user.role !== "admin") {
+      await handleFilesList(token, chatId, target.username, user);
+    } else {
+      await sendWithKeyboard(token, chatId, `👤 المستخدم الحالي: *${target.username}*`, [
+        [btn("📂 عرض الملفات", `files:${target.username}`, "primary")],
+        [btn("🔙 رجوع", "menu:main", "secondary")],
+      ]);
+    }
+    return;
+  }
+
+  if (data.startsWith("files:")) {
+    const username = data.split(":")[1];
+    const user = storage.getUserByUsername(username);
+    if (!user) {
+      await sendWithKeyboard(token, chatId, `❌ المستخدم ${username} غير موجود`, [[btn("🔙 رجوع", "menu:main", "secondary")]]);
+      return;
+    }
+    await handleFilesList(token, chatId, username, user);
+    return;
+  }
+
+  if (data.startsWith("getall:")) {
+    const username = data.split(":")[1];
+    const user = storage.getUserByUsername(username);
+    if (!user) {
+      await sendWithKeyboard(token, chatId, `❌ المستخدم ${username} غير موجود`, [[btn("🔙 رجوع", "menu:main", "secondary")]]);
+      return;
+    }
+    const home = sandboxManager.getUserSandboxHome(user.id);
+    if (!home || !fs.existsSync(home)) {
+      await sendWithKeyboard(token, chatId, `📂 لا توجد ملفات`, [[btn("🔙 رجوع", "menu:main", "secondary")]]);
+      return;
+    }
+
+    await sendWithKeyboard(token, chatId, `📦 جاري تجهيز ملفات *${username}*...`, [[btn("⏳ انتظر...", "menu:main", "secondary")]]);
+
+    const archPath = path.join(os.tmpdir(), `${username}_all_${Date.now()}.tar.gz`);
+    try {
+      execSync(`tar -czf "${archPath}" -C "${home}" . 2>/dev/null`, { timeout: 30000 });
+      const sent = await sendTelegramDocument(token, chatId, archPath, `📦 كل ملفات ${username}`);
+      try { fs.unlinkSync(archPath); } catch {}
+      if (!sent) await sendTelegramMsg(token, chatId, "❌ فشل إرسال الأرشيف");
+    } catch {
+      await sendTelegramMsg(token, chatId, "❌ فشل إنشاء الأرشيف");
+    }
+    await sendWithKeyboard(token, chatId, "✅ تم الإرسال", [[btn("🔙 رجوع", `user:${username}`, "secondary")]]);
+    return;
+  }
+
+  if (data.startsWith("settarget:")) {
+    const username = data.split(":")[1];
+    const user = storage.getUserByUsername(username);
+    if (!user) {
+      await sendWithKeyboard(token, chatId, `❌ المستخدم ${username} غير موجود`, [[btn("🔙 رجوع", "users:list", "secondary")]]);
+      return;
+    }
+    uploadTargetUserId = user.id;
+    await sendWithKeyboard(token, chatId, `✅ المستخدم المستهدف: *${user.display_name}*\n\nأرسل ملفات للبوت وسيتم رفعها على *${user.username}*`,
+      [[btn("🔄 تغيير", "users:list", "primary"), btn("🏠 القائمة", "menu:main", "secondary")]]
+    );
+    return;
+  }
+
+  if (data.startsWith("filedown:")) {
+    const [, username, ...fileParts] = data.split(":");
+    const fileName = fileParts.join(":");
+    const user = storage.getUserByUsername(username);
+    if (!user) {
+      await sendWithKeyboard(token, chatId, "❌ المستخدم غير موجود", [[btn("🔙 رجوع", "menu:main", "secondary")]]);
+      return;
+    }
+    const home = sandboxManager.getUserSandboxHome(user.id);
+    if (!home) { await sendWithKeyboard(token, chatId, "❌ لا يوجد sandbox", [[btn("🔙 رجوع", "menu:main", "secondary")]]); return; }
+
+    let filePath = path.join(home, fileName);
+    if (!fs.existsSync(filePath)) {
+      let found = false;
+      const search = (dir: string): boolean => {
+        try {
+          for (const i of fs.readdirSync(dir)) {
+            if (i.startsWith(".") || i === "bin" || i === "tmp" || i === "node_modules") continue;
+            const p = path.join(dir, i);
+            const st = fs.statSync(p);
+            if (st.isDirectory()) { if (search(p)) return true; }
+            else if (i === fileName) { filePath = p; return true; }
+          }
+        } catch {}
+        return false;
+      };
+      found = search(home);
+      if (!found) {
+        await sendWithKeyboard(token, chatId, `❌ الملف ${fileName} غير موجود`, [[btn("🔙 رجوع", `files:${username}`, "secondary")]]);
+        return;
+      }
+    }
+
+    const stat = fs.statSync(filePath);
+    if (stat.size > 50 * 1024 * 1024) {
+      await sendWithKeyboard(token, chatId, `❌ الملف كبير جداً (${formatSize(stat.size)})`, [[btn("🔙 رجوع", `files:${username}`, "secondary")]]);
+      return;
+    }
+
+    await sendTelegramMsg(token, chatId, `⏳ جاري إرسال *${fileName}*...`);
+    const sent = await sendTelegramDocument(token, chatId, filePath, `📄 ${fileName} | 👤 ${username} | 📦 ${formatSize(stat.size)}`);
+    if (!sent) await sendTelegramMsg(token, chatId, `❌ فشل إرسال الملف`);
+    return;
+  }
+
+  if (data === "cache:clear") {
+    try {
+      const home = ensureAdminSandbox();
+      if (home) {
+        const cacheDir = path.join(home, ".cache");
+        if (fs.existsSync(cacheDir)) {
+          execSync(`rm -rf "${cacheDir}"`, { timeout: 10000 });
+          await sendWithKeyboard(token, chatId, "✅ تم تفريغ الكاش بنجاح", [[btn("🔙 رجوع", "menu:main", "secondary")]]);
+        } else {
+          await sendWithKeyboard(token, chatId, "ℹ️ الكاش فارغ بالفعل", [[btn("🔙 رجوع", "menu:main", "secondary")]]);
+        }
+      }
+    } catch {
+      await sendWithKeyboard(token, chatId, "❌ فشل تفريغ الكاش", [[btn("🔙 رجوع", "menu:main", "secondary")]]);
+    }
+    return;
+  }
+
+  if (data === "status:show") {
+    const target = getTargetSandbox();
+    const users = storage.getUsers();
+    await sendWithKeyboard(token, chatId,
+      `📊 *حالة الخادم*\n\n` +
+      `🟢 البوت: متصل\n` +
+      `👤 المستخدم: *${target?.username || "N/A"}*\n` +
+      `👥 المستخدمين: ${users.length}\n` +
+      `📂 المسار: \`${target?.homeDir || "N/A"}\``,
+      [[btn("🔙 رجوع", "menu:main", "secondary")]]
+    );
+    return;
+  }
+
+  if (data.startsWith("back:user:")) {
+    const username = data.split(":")[2];
+    const user = storage.getUserByUsername(username);
+    if (user) {
+      await sendWithKeyboard(token, chatId, `👤 *${user.display_name}* (@${user.username})`,
+        [
+          [btn("📂 الملفات", `files:${username}`, "primary"), btn("⬇️ تحميل الكل", `getall:${username}`, "primary")],
+          [btn("🎯 تحديد", `settarget:${username}`, "secondary")],
+          [btn("🔙 رجوع", "users:list", "secondary")],
+        ]
+      );
+    }
+    return;
+  }
+}
+
+async function handleFilesList(token: string, chatId: string, username: string, user: any): Promise<void> {
+  const home = sandboxManager.getUserSandboxHome(user.id);
+  if (!home || !fs.existsSync(home)) {
+    await sendWithKeyboard(token, chatId, `📂 لا توجد ملفات لـ *${username}*`, [[btn("🔙 رجوع", "menu:main", "secondary")]]);
+    return;
+  }
+
+  const files: { name: string; size: number; rel: string }[] = [];
+  const walk = (dir: string, rel: string) => {
+    try {
+      for (const i of fs.readdirSync(dir)) {
+        if (i.startsWith(".") || i === "bin" || i === "tmp" || i === "node_modules") continue;
+        const p = path.join(dir, i);
+        const st = fs.statSync(p);
+        if (st.isDirectory()) walk(p, rel ? rel + "/" + i : i);
+        else files.push({ name: i, size: st.size, rel: rel ? rel + "/" + i : i });
+      }
+    } catch {}
+  };
+  walk(home, "");
+
+  if (files.length === 0) {
+    await sendWithKeyboard(token, chatId, `📂 مجلد *${username}* فارغ`, [[btn("🔙 رجوع", `user:${username}`, "secondary")]]);
+    return;
+  }
+
+  const rows: any[][] = [];
+  for (const f of files.slice(0, 30)) {
+    rows.push([btn(`📄 ${f.rel} (${formatSize(f.size)})`, `filedown:${username}:${f.name}`, "primary")]);
+  }
+  if (files.length > 30) {
+    rows.push([btn(`... و ${files.length - 30} ملف إضافي`, "menu:main", "secondary")]);
+  }
+  rows.push([btn("⬇️ تحميل الكل", `getall:${username}`, "destructive")]);
+  rows.push([btn("🔙 رجوع", `user:${username}`, "secondary")]);
+  await sendWithKeyboard(token, chatId, `📂 *ملفات ${username}* (${files.length} ملف):`, rows);
+}
+
+// ===================== WEBHOOK HANDLER =====================
+
 router.post("/telegram/webhook", async (req: Request, res: Response): Promise<void> => {
   res.json({ ok: true });
 
@@ -142,13 +446,19 @@ router.post("/telegram/webhook", async (req: Request, res: Response): Promise<vo
     const token = settings.telegram_bot_token;
     const allowedChatId = settings.telegram_chat_id;
 
+    // Handle callback queries (button presses)
+    if (update.callback_query) {
+      await handleCallbackQuery(token, allowedChatId, update.callback_query);
+      return;
+    }
+
     // Handle messages
     const message = update.message || update.edited_message;
     if (!message) return;
 
     const chatId = String(message.chat.id);
     if (chatId !== allowedChatId) {
-      await sendTelegramMsg(token, chatId, "⛔ غير مصرح لك بالتعامل مع هذا البوت");
+      await sendTelegramMsg(token, chatId, "⛔ غير مصرح لك");
       return;
     }
 
@@ -157,113 +467,31 @@ router.post("/telegram/webhook", async (req: Request, res: Response): Promise<vo
     // /start
     if (text === "/start" || text === "/help") {
       const target = getTargetSandbox();
-      await sendTelegramMsg(token, chatId,
-        `🖥 *SERVER HUB Bot*\n\n` +
-        `📂 *عرض الملفات:*\n` +
-        `/users - قائمة جميع المستخدمين\n` +
-        `/files <username> - ملفات مستخدم معين\n` +
-        `/get <username> <file> - تحميل ملف من السيرفر\n\n` +
-        `📤 *رفع ملفات:*\n` +
-        `/setuser <username> - تغيير المستخدم المستهدف\n` +
-        `/clearuser - إعادة للمدمن\n` +
-        `/target - عرض المستخدم الحالي\n\n` +
-        `⚙️ *أخرى:*\n` +
-        `/start - بدء البوت\n` +
-        `/status - حالة الخادم\n` +
-        `/help - المساعدة\n\n` +
-        `💡 أرسل ملف للبوت مباشرة لرفعه على السيرفر`
+      await sendWithKeyboard(token, chatId,
+        `🖥 *SERVER HUB Bot*\n\n👤 المستخدم الحالي: *${target?.username || "admin"}*\n\n📊 اضغط على الزر للمتابعة`,
+        [
+          [btn("👥 المستخدمين", "users:list", "primary"), btn("📂 الملفات", "files:current", "primary")],
+          [btn("📤 رفع ملف", "upload:info", "secondary"), btn("📊 الحالة", "status:show", "secondary")],
+          [btn("🗑 تفريغ الكاش", "cache:clear", "destructive")],
+        ]
       );
       return;
     }
 
-    // /status
-    if (text === "/status") {
-      const target = getTargetSandbox();
-      const users = storage.getUsers();
-      await sendTelegramMsg(token, chatId,
-        `📊 *حالة الخادم*\n\n` +
-        `🟢 البوت: متصل\n` +
-        `👤 المستخدم المستهدف: *${target?.username || "admin"}*\n` +
-        `👥 عدد المستخدمين: ${users.length}\n` +
-        `📂 المسار: ${target?.homeDir || "N/A"}`
-      );
-      return;
-    }
-
-    // /list
-    if (text === "/list") {
-      const target = getTargetSandbox();
-      if (!target || !fs.existsSync(target.homeDir)) {
-        await sendTelegramMsg(token, chatId, "❌ لا توجد ملفات");
-        return;
-      }
-      const listing = listDirTree(target.homeDir);
-      if (!listing.trim()) {
-        await sendTelegramMsg(token, chatId, `📂 المجلد فارغ: ${target.homeDir}`);
-        return;
-      }
-      const msg = `📂 *ملفات ${target.username}:*\n\n${listing}`;
-      if (msg.length > 4000) {
-        const lines = listing.split("\n");
-        const half = Math.ceil(lines.length / 2);
-        await sendTelegramMsg(token, chatId, `📂 *ملفات ${target.username} (1/2):*\n\n${lines.slice(0, half).join("\n")}`);
-        await sendTelegramMsg(token, chatId, `📂 *ملفات ${target.username} (2/2):*\n\n${lines.slice(half).join("\n")}`);
-      } else {
-        await sendTelegramMsg(token, chatId, msg);
-      }
-      return;
-    }
-
-    // /setuser <username>
-    if (text.startsWith("/setuser")) {
-      const parts = text.split(" ");
-      if (parts.length < 2) {
-        await sendTelegramMsg(token, chatId, "❌ الاستخدام: /setuser <username>\nمثال: /setuser ahmed");
-        return;
-      }
-      const targetUsername = parts[1].trim();
-      const targetUser = storage.getUserByUsername(targetUsername);
-      if (!targetUser) {
-        await sendTelegramMsg(token, chatId, `❌ المستخدم *${targetUsername}* غير موجود`);
-        return;
-      }
-      uploadTargetUserId = targetUser.id;
-      await sendTelegramMsg(token, chatId, `✅ تم تغيير المستخدم المستهدف إلى: *${targetUser.display_name}* (@${targetUser.username})`);
-      return;
-    }
-
-    // /clearuser
-    if (text === "/clearuser") {
-      uploadTargetUserId = null;
-      await sendTelegramMsg(token, chatId, "✅ تم إعادة المستخدم المستهدف للمدمن (admin)");
-      return;
-    }
-
-    // /target
-    if (text === "/target") {
-      const target = getTargetSandbox();
-      await sendTelegramMsg(token, chatId, `👤 المستخدم الحالي: *${target?.username || "admin"}*\n📂 المسار: \`${target?.homeDir || "N/A"}\``);
-      return;
-    }
-
-    // /users - list all users
     if (text === "/users") {
       const users = storage.getUsers();
       if (users.length === 0) {
-        await sendTelegramMsg(token, chatId, "❌ لا يوجد مستخدمين");
+        await sendWithKeyboard(token, chatId, "❌ لا يوجد مستخدمين", [[btn("🔙 رجوع", "menu:main", "secondary")]]);
         return;
       }
-      let msg = `👥 *جميع المستخدمين:*\n\n`;
+      const rows: any[][] = [];
       for (const u of users) {
         const home = sandboxManager.getUserSandboxHome(u.id);
-        const hasFiles = home ? fs.existsSync(home) : false;
-        let fileCount = 0;
-        let totalSize = 0;
-        if (hasFiles && home) {
+        let fileCount = 0, totalSize = 0;
+        if (home && fs.existsSync(home)) {
           try {
             const walk = (dir: string) => {
-              const items = fs.readdirSync(dir);
-              for (const i of items) {
+              for (const i of fs.readdirSync(dir)) {
                 if (i.startsWith(".") || i === "bin" || i === "tmp" || i === "node_modules") continue;
                 const p = path.join(dir, i);
                 const st = fs.statSync(p);
@@ -275,121 +503,104 @@ router.post("/telegram/webhook", async (req: Request, res: Response): Promise<vo
           } catch {}
         }
         const role = u.role === "admin" ? "👑" : "👤";
-        msg += `${role} *${u.display_name}* (@${u.username})\n`;
-        msg += `   📄 ${fileCount} ملف | ${formatSize(totalSize)}\n\n`;
+        rows.push([btn(`${role} ${u.display_name} (${fileCount} 📄 | ${formatSize(totalSize)})`, `user:${u.username}`, "primary")]);
       }
-      if (msg.length > 4000) {
-        await sendTelegramMsg(token, chatId, msg.substring(0, 4000));
-      } else {
-        await sendTelegramMsg(token, chatId, msg);
-      }
+      rows.push([btn("🔙 رجوع", "menu:main", "secondary")]);
+      await sendWithKeyboard(token, chatId, "👥 *جميع المستخدمين:*", rows);
       return;
     }
 
-    // /files <username> - list files for a user
     if (text.startsWith("/files")) {
       const parts = text.split(" ");
       if (parts.length < 2) {
-        await sendTelegramMsg(token, chatId,
-          "❌ الاستخدام: /files <username>\nمثال: /files ahmed\n\nاكتب /users لرؤية جميع المستخدمين"
-        );
+        await sendWithKeyboard(token, chatId, "❌ الاستخدام: /files <username>",
+          [[btn("👥 المستخدمين", "users:list", "primary"), btn("🔙 رجوع", "menu:main", "secondary")]]);
         return;
       }
-      const targetUsername = parts[1].trim();
-      const targetUser = storage.getUserByUsername(targetUsername);
-      if (!targetUser) {
-        await sendTelegramMsg(token, chatId, `❌ المستخدم *${targetUsername}* غير موجود`);
+      const username = parts[1].trim();
+      const user = storage.getUserByUsername(username);
+      if (!user) {
+        await sendWithKeyboard(token, chatId, `❌ المستخدم ${username} غير موجود`, [[btn("👥 المستخدمين", "users:list", "primary")]]);
         return;
       }
-      const home = sandboxManager.getUserSandboxHome(targetUser.id);
-      if (!home || !fs.existsSync(home)) {
-        await sendTelegramMsg(token, chatId, `📂 المستخدم *${targetUsername}* ليس له ملفات`);
-        return;
-      }
-      const listing = listDirTree(home);
-      if (!listing.trim()) {
-        await sendTelegramMsg(token, chatId, `📂 مجلد *${targetUsername}* فارغ`);
-        return;
-      }
-      const msg = `📂 *ملفات ${targetUser.display_name} (@${targetUser.username}):*\n\n${listing}`;
-      if (msg.length > 4000) {
-        const lines = listing.split("\n");
-        const chunkSize = Math.ceil(lines.length / 2);
-        await sendTelegramMsg(token, chatId, `📂 *ملفات ${targetUsername} (1/2):*\n\n${lines.slice(0, chunkSize).join("\n")}`);
-        await sendTelegramMsg(token, chatId, `📂 *ملفات ${targetUsername} (2/2):*\n\n${lines.slice(chunkSize).join("\n")}`);
-      } else {
-        await sendTelegramMsg(token, chatId, msg);
-      }
+      await handleFilesList(token, chatId, username, user);
       return;
     }
 
-    // /get <username> <filename> - download a file from user sandbox
     if (text.startsWith("/get")) {
       const parts = text.split(" ");
       if (parts.length < 3) {
-        await sendTelegramMsg(token, chatId,
-          "❌ الاستخدام: /get <username> <filename>\nمثال: /get ahmed app.py\n\nاكتب /files ahmed لرؤية ملفات المستخدم"
-        );
+        await sendWithKeyboard(token, chatId, "❌ الاستخدام: /get <username> <file>",
+          [[btn("👥 المستخدمين", "users:list", "primary")]]);
         return;
       }
-      const targetUsername = parts[1].trim();
+      const username = parts[1].trim();
       const fileName = parts.slice(2).join(" ").trim();
-      const targetUser = storage.getUserByUsername(targetUsername);
-      if (!targetUser) {
-        await sendTelegramMsg(token, chatId, `❌ المستخدم *${targetUsername}* غير موجود`);
+      const user = storage.getUserByUsername(username);
+      if (!user) {
+        await sendWithKeyboard(token, chatId, `❌ المستخدم ${username} غير موجود`, [[btn("🔙 رجوع", "menu:main", "secondary")]]);
         return;
       }
-      const home = sandboxManager.getUserSandboxHome(targetUser.id);
+      const home = sandboxManager.getUserSandboxHome(user.id);
       if (!home || !fs.existsSync(home)) {
-        await sendTelegramMsg(token, chatId, `📂 المستخدم *${targetUsername}* ليس له ملفات`);
+        await sendWithKeyboard(token, chatId, `📂 لا توجد ملفات`, [[btn("🔙 رجوع", "menu:main", "secondary")]]);
         return;
       }
-
-      // Search for the file (support relative paths and filenames)
       let filePath = path.join(home, fileName);
       if (!fs.existsSync(filePath)) {
-        // Try to find file by name in sandbox tree
         let found = false;
-        const searchFile = (dir: string): boolean => {
+        const search = (dir: string): boolean => {
           try {
-            const items = fs.readdirSync(dir);
-            for (const i of items) {
+            for (const i of fs.readdirSync(dir)) {
               if (i.startsWith(".") || i === "bin" || i === "tmp" || i === "node_modules") continue;
               const p = path.join(dir, i);
               const st = fs.statSync(p);
-              if (st.isDirectory()) {
-                if (searchFile(p)) return true;
-              } else if (i === fileName) {
-                filePath = p;
-                return true;
-              }
+              if (st.isDirectory()) { if (search(p)) return true; }
+              else if (i === fileName) { filePath = p; return true; }
             }
           } catch {}
           return false;
         };
-        found = searchFile(home);
+        found = search(home);
         if (!found) {
-          await sendTelegramMsg(token, chatId, `❌ الملف *${fileName}* غير موجود chez *${targetUsername}*`);
+          await sendWithKeyboard(token, chatId, `❌ الملف ${fileName} غير موجود`, [[btn("📂 الملفات", `files:${username}`, "primary")]]);
           return;
         }
       }
-
       const stat = fs.statSync(filePath);
       if (stat.isDirectory()) {
-        await sendTelegramMsg(token, chatId, `❌ *${fileName}* مجلد وليس ملف\nاكتب /files ${targetUsername} لرؤية المحتوى`);
+        await sendWithKeyboard(token, chatId, `❌ ${fileName} مجلد وليس ملف`, [[btn("📂 الملفات", `files:${username}`, "primary")]]);
         return;
       }
-
       if (stat.size > 50 * 1024 * 1024) {
-        await sendTelegramMsg(token, chatId, `❌ الملف كبير جداً (${formatSize(stat.size)})\nالحد الأقصى 50 MB`);
+        await sendWithKeyboard(token, chatId, `❌ الملف كبير جداً (${formatSize(stat.size)})`, [[btn("🔙 رجوع", `files:${username}`, "secondary")]]);
         return;
       }
+      await sendTelegramMsg(token, chatId, `⏳ جاري إرسال *${fileName}*...`);
+      const sent = await sendTelegramDocument(token, chatId, filePath, `📄 ${fileName} | 👤 ${username} | 📦 ${formatSize(stat.size)}`);
+      if (!sent) await sendTelegramMsg(token, chatId, "❌ فشل إرسال الملف");
+      return;
+    }
 
-      await sendTelegramMsg(token, chatId, `⏳ جاري إرسال *${fileName}* (${formatSize(stat.size)})...`);
-      const sent = await sendTelegramDocument(token, chatId, filePath, `📄 ${fileName}\n👤 ${targetUsername}\n📦 ${formatSize(stat.size)}`);
-      if (!sent) {
-        await sendTelegramMsg(token, chatId, `❌ فشل إرسال الملف *${fileName}*`);
+    if (text === "/setuser") {
+      uploadTargetUserId = null;
+      const users = storage.getUsers();
+      const rows: any[][] = [];
+      for (const u of users) {
+        rows.push([btn(`${u.role === "admin" ? "👑" : "👤"} ${u.display_name}`, `settarget:${u.username}`, "primary")]);
       }
+      rows.push([btn("🏠 للمدمن", "settarget:elmodmen", "destructive")]);
+      rows.push([btn("🔙 رجوع", "menu:main", "secondary")]);
+      await sendWithKeyboard(token, chatId, "🎯 اختر المستخدم المستهدف للملفات:", rows);
+      return;
+    }
+
+    if (text === "/target") {
+      const target = getTargetSandbox();
+      await sendWithKeyboard(token, chatId,
+        `👤 المستخدم الحالي: *${target?.username || "admin"}*\n📂 ${target?.homeDir || "N/A"}`,
+        [[btn("🔄 تغيير", "setuser:list", "primary"), btn("🔙 رجوع", "menu:main", "secondary")]]
+      );
       return;
     }
 
@@ -399,63 +610,67 @@ router.post("/telegram/webhook", async (req: Request, res: Response): Promise<vo
       const fileName = doc.file_name || "unknown_file";
       const target = getTargetSandbox();
       if (!target) {
-        await sendTelegramMsg(token, chatId, "❌ لا يوجد مستخدم مستهدف");
+        await sendWithKeyboard(token, chatId, "❌ لا يوجد مستخدم مستهدف",
+          [[btn("🎯 اختر مستخدم", "users:list", "primary")]]);
         return;
       }
-
       await sendTelegramMsg(token, chatId, `⏳ جاري تحميل *${fileName}*...`);
-
       const destPath = path.join(target.homeDir, fileName);
       const success = await downloadTelegramFile(token, doc.file_id, destPath);
-
       if (success) {
-        const size = doc.file_size || 0;
-        await sendTelegramMsg(token, chatId,
-          `✅ تم رفع الملف بنجاح!\n\n` +
-          `📄 الملف: *${fileName}*\n` +
-          `📦 الحجم: ${formatSize(size)}\n` +
-          `👤 المستخدم: *${target.username}*\n` +
-          `📂 المسار: \`${destPath}\``
+        await sendWithKeyboard(token, chatId,
+          `✅ تم رفع الملف!\n\n📄 *${fileName}*\n📦 ${formatSize(doc.file_size || 0)}\n👤 *${target.username}*`,
+          [[btn("📂 الملفات", `files:${target.username}`, "primary"), btn("🏠 القائمة", "menu:main", "secondary")]]
         );
       } else {
-        await sendTelegramMsg(token, chatId, `❌ فشل تحميل الملف *${fileName}*`);
+        await sendWithKeyboard(token, chatId, `❌ فشل تحميل ${fileName}`,
+          [[btn("🔄 إعادة المحاولة", "menu:main", "destructive")]]);
       }
       return;
     }
 
-    // Handle photos (save highest resolution)
+    // Handle photos
     if (message.photo && message.photo.length > 0) {
       const photo = message.photo[message.photo.length - 1];
       const target = getTargetSandbox();
       if (!target) {
-        await sendTelegramMsg(token, chatId, "❌ لا يوجد مستخدم مستهدف");
+        await sendWithKeyboard(token, chatId, "❌ لا يوجد مستخدم مستهدف",
+          [[btn("🎯 اختر مستخدم", "users:list", "primary")]]);
         return;
       }
-
-      const ext = "jpg";
-      const fileName = `photo_${Date.now()}.${ext}`;
+      const fileName = `photo_${Date.now()}.jpg`;
       const destPath = path.join(target.homeDir, fileName);
-
       await sendTelegramMsg(token, chatId, `⏳ جاري تحميل الصورة...`);
       const success = await downloadTelegramFile(token, photo.file_id, destPath);
-
       if (success) {
-        await sendTelegramMsg(token, chatId,
-          `✅ تم رفع الصورة بنجاح!\n\n` +
-          `🖼 الملف: *${fileName}*\n` +
-          `📦 الحجم: ${formatSize(photo.file_size || 0)}\n` +
-          `👤 المستخدم: *${target.username}*`
+        await sendWithKeyboard(token, chatId,
+          `✅ تم رفع الصورة!\n\n🖼 *${fileName}*\n📦 ${formatSize(photo.file_size || 0)}\n👤 *${target.username}*`,
+          [[btn("📂 الملفات", `files:${target.username}`, "primary"), btn("🏠 القائمة", "menu:main", "secondary")]]
         );
       } else {
-        await sendTelegramMsg(token, chatId, "❌ فشل تحميل الصورة");
+        await sendWithKeyboard(token, chatId, "❌ فشل تحميل الصورة",
+          [[btn("🔄 إعادة", "menu:main", "destructive")]]);
       }
       return;
     }
 
-    // Unhandled message type
+    // Handle upload:info callback from text
+    if (text === "/upload") {
+      const target = getTargetSandbox();
+      await sendWithKeyboard(token, chatId,
+        `📤 *رفع ملفات*\n\nأرسل أي ملف للبوت مباشرة وسيتم رفعه على *${target?.username || "admin"}*`,
+        [[btn("🎯 تغيير المستخدم", "users:list", "primary"), btn("🏠 القائمة", "menu:main", "secondary")]]
+      );
+      return;
+    }
+
+    // Unhandled text
     if (text && !text.startsWith("/")) {
-      await sendTelegramMsg(token, chatId,
-        `📝 تم استلام رسالتك\n\nلرفع ملفات، أرسل الملف مباشرة للبوت\nاكتب /help للأوامر`
+      await sendWithKeyboard(token, chatId, `📝 استخدم الأزرار أو الأوامر:`,
+        [
+          [btn("👥 المستخدمين", "users:list", "primary"), btn("📂 الملفات", "files:current", "primary")],
+          [btn("📊 المساعدة", "menu:main", "secondary")],
+        ]
       );
     }
   } catch (err) {
