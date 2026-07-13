@@ -1528,12 +1528,34 @@ def admin_callbacks(call):
             if is_approve:
                 ok, count = activate_subscription_for_telegram(tg_id, plan_key)
                 if ok:
+                    # تحويل النجوم من المستخدم إلى المطور
+                    price = plan_info.get('price_stars', 0)
+                    if price > 0:
+                        users_all = load_users()
+                        # اخصم من المشتري
+                        buyer_found = False
+                        admin_username = None
+                        for uname, data in users_all.items():
+                            if data.get('telegram_id') == tg_id:
+                                old = data.get('points', 0)
+                                data['points'] = max(0, old - price)
+                                buyer_found = True
+                            if data.get('telegram_id') == ADMIN_ID:
+                                admin_username = uname
+                        if buyer_found:
+                            save_users(users_all)
+                            # أضف للمطور
+                            if admin_username:
+                                add_points(admin_username, price, f"استلام نجوم من اشتراك {plan_key}")
+                            _log_action("تحويل نجوم", admin_id=ADMIN_ID,
+                                        details=f"تحويل {price} نجمة من {tg_id} إلى المطور")
+                    price_line = f"\n💰 تم خصم `{price}` نجمة من رصيدك وتحويلها للمطور." if price > 0 else "\n🆓 الباقة مجانية"
                     try:
                         bot.send_message(tg_id,
                             f"🎉 **تم تفعيل اشتراكك بنجاح!**\n\n"
                             f"📦 الباقة: {plan_info.get('label', plan_key)}\n"
-                            f"⏳ المدة: {plan_info.get('days', 0)} يوم\n\n"
-                            f"شكراً لثقتك بنا 🌟",
+                            f"⏳ المدة: {plan_info.get('days', 0)} يوم"
+                            f"{price_line}",
                             parse_mode="Markdown")
                     except Exception:
                         pass
