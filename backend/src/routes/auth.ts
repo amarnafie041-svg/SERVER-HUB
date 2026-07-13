@@ -3,17 +3,18 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { storage } from "../lib/storage";
 import { signToken } from "../lib/jwt";
-import { authenticate } from "../middleware/authenticate";
+import { authenticate, requireAdmin } from "../middleware/authenticate";
 import { notify } from "../lib/telegram";
 import { logger } from "../lib/logger";
 import { logActivity } from "./activity";
 import { killAllSessionsForUser } from "./terminal";
 
 const router: IRouter = Router();
+const BOT_SECRET = process.env.BOT_API_SECRET || "";
 
-router.post("/auth/register", async (req: Request, res: Response): Promise<void> => {
+router.post("/auth/register", authenticate, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { username, password, display_name, email } = req.body;
+    const { username, password, display_name } = req.body;
     if (!username || !password) {
       res.status(400).json({ message: "Username and password required" }); return;
     }
@@ -31,12 +32,45 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
       disabled: false,
     };
     const user = storage.createUser(newUser);
-    logActivity({ user: username, action: "register", target: "auth", details: "Registered successfully", ip: req.ip || "unknown", status: "success" });
-    notify("register", `New user *${username}* registered on SERVER HUB v5`);
+    logActivity({ user: username, action: "register", target: "auth", details: "Registered by admin", ip: req.ip || "unknown", status: "success" });
+    notify("register", `New user *${username}* created by admin on SERVER HUB v5`);
     res.json({ success: true, user: { id: user.id, username: user.username, role: user.role, display_name: user.display_name, avatar: user.avatar, expires_at: user.expires_at } });
   } catch (err) {
     logger.error({ err }, "Registration failed");
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/auth/bot-create", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ") || authHeader.slice(7) !== BOT_SECRET) {
+      res.status(401).json({ error: "Unauthorized" }); return;
+    }
+    const { username, password, display_name } = req.body;
+    if (!username || !password) {
+      res.status(400).json({ error: "Username and password required" }); return;
+    }
+    if (storage.getUserByUsername(username)) {
+      res.status(200).json({ message: "User already exists", username });
+      return;
+    }
+    const newUser: Omit<User, "id" | "created_at" | "last_login"> = {
+      username,
+      password_hash: bcrypt.hashSync(password, 10),
+      role: "user",
+      display_name: display_name || username,
+      avatar: null,
+      created_at: new Date().toISOString(),
+      expires_at: null,
+      disabled: false,
+    };
+    const user = storage.createUser(newUser);
+    logActivity({ user: username, action: "register", target: "auth", details: "Registered via bot", ip: req.ip || "unknown", status: "success" });
+    res.status(201).json({ success: true, user: { id: user.id, username: user.username, role: user.role } });
+  } catch (err) {
+    logger.error({ err }, "Bot create user failed");
+    res.status(500).json({ error: "Server error" });
   }
 });
 
