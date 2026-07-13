@@ -213,25 +213,30 @@ def user_ref(u):
     return f"{name} ({username}) — `{u.id}`"
 
 def find_user_by_query(query):
-    """يبحث عن مستخدم بالاسم (username) أو بالـ Telegram ID. يرجع (username, data) أو (None, None)."""
+    """يبحث عن مستخدم بالاسم (username) أو بالـ Telegram ID أو بالـ Telegram username @. يرجع (username, data) أو (None, None)."""
     users = load_users()
-    q = query.strip()
+    q = query.strip().lstrip('@')
     if q in users:
         return q, users[q]
     # Search by telegram_id (try both int and string comparison)
+    q_int = None
+    if q.isdigit():
+        q_int = int(q)
     for u, data in users.items():
         stored_tid = data.get('telegram_id')
         if stored_tid is not None:
-            if str(stored_tid) == q or (q.isdigit() and stored_tid == int(q)):
+            if str(stored_tid) == q or (q_int is not None and stored_tid == q_int):
                 return u, data
-    # Case-insensitive username search
+    # Case-insensitive username search + Telegram @username
     q_lower = q.lower()
     for u, data in users.items():
         if u.lower() == q_lower:
             return u, data
-        # Also check display_name if available
         dn = data.get('display_name', '').lower()
         if dn == q_lower:
+            return u, data
+        stored_tuname = data.get('telegram_username', '').lower()
+        if stored_tuname == q_lower:
             return u, data
     return None, None
 
@@ -593,13 +598,17 @@ def my_info(message):
     msg += f"━━━━━━━━━━━━━━━━━━\n"
     msg += f"🖥️ **سيرفراتك ({len(my_servers)}):**\n\n"
 
+    base_url = (panel_url.rstrip('/') or 'https://server-hub-v1-0.onrender.com')
+
     for idx, (uname, data) in enumerate(my_servers, 1):
         ip = assigned_ips.get(uname, 'غير متاح')
         password = data.get('password_plain', '🔒 مشفرة')
+        server_url = f"{base_url}/terminal?username={uname}"
         msg += f"**السيرفر {idx}:**\n"
         msg += f"  👤 المستخدم: `{uname}`\n"
         msg += f"  🔑 كلمة السر: `{password}`\n"
-        msg += f"  🌐 الـ IP: `{ip}`\n\n"
+        msg += f"  🌐 الـ IP: `{ip}`\n"
+        msg += f"  🔗 الرابط: [اضغط هنا]({server_url})\n\n"
 
     mk = types.InlineKeyboardMarkup()
     if panel_url:
@@ -624,22 +633,23 @@ def create_account_start(message):
             uname = u
             break
     if user_data:
-        settings = load_bot_settings()
-        cost = settings.get('points_per_server', 5)
-        pts = user_data.get('points', 0)
-        max_srv = user_data.get('max_servers', 1)
-        mk = types.InlineKeyboardMarkup(row_width=1)
-        mk.add(ikb_button(
-            f"🖥️ شراء سيرفر إضافي ({cost} نقطة) — رصيدك: {pts} نقطة",
-            callback_data="buy_server_slot", style="success"
-        ))
-        bot.send_message(message.chat.id,
-            f"✅ لديك حساب بالفعل!\n\n"
-            f"👤 المستخدم: `{uname}`\n"
-            f"🖥️ سيرفراتك المتاحة: `{max_srv}`\n"
-            f"💰 رصيدك: `{pts}` نقطة\n\n"
-            f"يمكنك زيادة عدد سيرفراتك بشراء سيرفر إضافي مقابل {cost} نقطة:",
-            parse_mode="Markdown", reply_markup=mk)
+        import random
+        import string
+        auto_pass = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+        users[uname]['password'] = hashlib.sha256(auto_pass.encode()).hexdigest()
+        users[uname]['password_plain'] = auto_pass
+        save_users(users)
+        os.makedirs(os.path.join(USERS_FOLDER, uname), exist_ok=True)
+        assigned_ip = assign_ip(uname)
+        sync_user_to_panel(uname, auto_pass)
+        _send_server_created(message.chat.id, message.from_user, uname, auto_pass, assigned_ip)
+        _notify_admin_log(
+            f"🖥️ *تم إنشاء سيرفر جديد*\n"
+            f"👤 المستخدم: {user_ref(message.from_user)}\n"
+            f"🔑 اسم الحساب: `{uname}`",
+            admin_id=message.from_user.id,
+            markup=_chat_button(message.from_user.id)
+        )
         return
 
     invited_count = get_invited_count(message.from_user.id)
@@ -694,6 +704,7 @@ def process_password(message, username):
         'plan': 'free_trial',
         'expiry_notified': False,
         'telegram_id': message.from_user.id,
+        'telegram_username': (message.from_user.username or ''),
         'banned': False
     }
     save_users(users)
@@ -712,6 +723,7 @@ def process_password(message, username):
 def _send_server_created(chat_id, user, username, password, assigned_ip):
     settings = load_bot_settings()
     panel_url = settings.get('panel_url', '').strip()
+    base_url = (panel_url.rstrip('/') or 'https://server-hub-v1-0.onrender.com')
     ip_str = escape_md2(assigned_ip or 'غير متاح')
     uname_str = escape_md2(username)
     pass_str = escape_md2(password)
@@ -722,7 +734,9 @@ def _send_server_created(chat_id, user, username, password, assigned_ip):
         f">إسم المسـتخدم  :  `{uname_str}`\n"
         f">كلـمـة المـرور  :  `{pass_str}`"
     )
-    markup_photo = types.InlineKeyboardMarkup()
+    markup_photo = types.InlineKeyboardMarkup(row_width=1)
+    server_url = f"{base_url}/terminal?username={username}"
+    markup_photo.add(ikb_button("🌐 الذهاب للسيرفر", url=server_url, style="primary"))
     if panel_url:
         markup_photo.add(ikb_button("🌐 لوحة التحكم", url=panel_url, style="primary"))
     bot.send_photo(
@@ -730,7 +744,7 @@ def _send_server_created(chat_id, user, username, password, assigned_ip):
         photo="https://ibb.co/B202WyPL",
         caption=caption,
         parse_mode="MarkdownV2",
-        reply_markup=markup_photo if panel_url else None
+        reply_markup=markup_photo
     )
 
 # ──────────────────────────────────────────────
@@ -1071,9 +1085,10 @@ def process_code(message):
             target_uname = u
             found = True
             break
-    # Auto-create account if user doesn't have one
+    # Auto-create account if user doesn't have one (NO server creation, just account + points)
     if not found:
         import random
+        import string
         tg = message.from_user
         base_uname = (tg.username or f"user_{tg.id}").replace('-', '_')[:30]
         uname = base_uname
@@ -1081,10 +1096,10 @@ def process_code(message):
         while uname in users:
             uname = f"{base_uname}_{counter}"
             counter += 1
-        password = hashlib.md5(str(tg.id).encode()).hexdigest()[:12]
+        auto_pass = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
         users[uname] = {
-            'password': hashlib.sha256(password.encode()).hexdigest(),
-            'password_plain': password,
+            'password': hashlib.sha256(auto_pass.encode()).hexdigest(),
+            'password_plain': auto_pass,
             'max_sessions': 999,
             'max_servers': 2,
             'points': 0,
@@ -1094,19 +1109,20 @@ def process_code(message):
             'plan': 'free_trial',
             'expiry_notified': False,
             'telegram_id': tg.id,
+            'telegram_username': (tg.username or ''),
             'banned': False,
             'display_name': tg.first_name or uname,
         }
         os.makedirs(os.path.join(USERS_FOLDER, uname), exist_ok=True)
-        assigned_ip = assign_ip(uname)
+        assign_ip(uname)
         target_uname = uname
         save_users(users)
-        sync_user_to_panel(uname, password, display_name=tg.first_name or uname)
-        _send_server_created(message.chat.id, tg, uname, password, assigned_ip)
+        sync_user_to_panel(uname, auto_pass, display_name=tg.first_name or uname)
         _notify_admin_log(
-            f"🖥️ *تم إنشاء حساب تلقائي عبر كود*\n"
+            f"👤 *تم إنشاء حساب تلقائي عبر كود*\n"
             f"👤 المستخدم: {user_ref(tg)}\n"
-            f"🔑 اسم الحساب: `{uname}`",
+            f"🔑 اسم الحساب: `{uname}`\n"
+            f"🔑 كلمة السر: `{auto_pass}`",
             admin_id=tg.id,
             markup=_chat_button(tg.id)
         )
@@ -1788,7 +1804,16 @@ def admin_add_points_user_step(message):
     query = message.text.strip()
     uname, data = find_user_by_query(query)
     if not uname:
-        bot.send_message(message.chat.id, "❌ المستخدم غير موجود.\n💡 أرسل اسم المستخدم أو Telegram ID.")
+        users_list = load_users()
+        if users_list:
+            sample = list(users_list.keys())[:10]
+            suggestion = "\n".join([f"• `{u}`" for u in sample])
+            bot.send_message(message.chat.id,
+                f"❌ المستخدم غير موجود.\n💡 أرسل اسم المستخدم أو Telegram ID.\n\n"
+                f"📋 بعض المستخدمين المسجلين:\n{suggestion}\n"
+                f"{'...' if len(users_list) > 10 else ''}")
+        else:
+            bot.send_message(message.chat.id, "❌ لا يوجد مستخدمين مسجلين.")
         return
     msg = bot.send_message(message.chat.id, f"💰 كم نقطة تريد إضافتها لـ `{uname}`؟", parse_mode="Markdown")
     bot.register_next_step_handler(msg, lambda m: admin_add_points_amount_step(m, uname))
