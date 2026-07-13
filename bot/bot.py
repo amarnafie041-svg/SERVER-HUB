@@ -214,13 +214,24 @@ def user_ref(u):
 def find_user_by_query(query):
     """يبحث عن مستخدم بالاسم (username) أو بالـ Telegram ID. يرجع (username, data) أو (None, None)."""
     users = load_users()
-    if query in users:
-        return query, users[query]
-    if query.isdigit():
-        tid = int(query)
-        for u, data in users.items():
-            if data.get('telegram_id') == tid:
+    q = query.strip()
+    if q in users:
+        return q, users[q]
+    # Search by telegram_id (try both int and string comparison)
+    for u, data in users.items():
+        stored_tid = data.get('telegram_id')
+        if stored_tid is not None:
+            if str(stored_tid) == q or (q.isdigit() and stored_tid == int(q)):
                 return u, data
+    # Case-insensitive username search
+    q_lower = q.lower()
+    for u, data in users.items():
+        if u.lower() == q_lower:
+            return u, data
+        # Also check display_name if available
+        dn = data.get('display_name', '').lower()
+        if dn == q_lower:
+            return u, data
     return None, None
 
 # ──────────────────────────────────────────────
@@ -1044,28 +1055,69 @@ def process_code(message):
         return
     users = load_users()
     found = False
+    target_uname = None
     for u, data in users.items():
         if data.get('telegram_id') == user_id:
-            pts = code_data.get('points', 0)
-            data['points'] = data.get('points', 0) + pts
+            target_uname = u
             found = True
-            save_users(users)
-            codes[code_input]['uses'] = codes[code_input].get('uses', 0) - 1
-            codes[code_input].setdefault('used_by', []).append(user_id)
-            settings['codes'] = codes
-            save_bot_settings(settings)
-            bot.send_message(message.chat.id, f"✅ تم استخدام الكود بنجاح!\n💰 حصلت على *{pts} نقطة*!\n🔹 رصيدك الآن: *{data['points']} نقطة*", parse_mode="Markdown")
-            _notify_admin_log(
-                f"🎟️ *تم استخدام كود*\n"
-                f"👤 المستخدم: {user_ref(message.from_user)}\n"
-                f"🎁 الكود: `{code_input}`\n"
-                f"💰 النقاط الممنوحة: {pts}",
-                admin_id=message.from_user.id,
-                markup=_chat_button(message.from_user.id)
-            )
             break
+    # Auto-create account if user doesn't have one
     if not found:
-        bot.send_message(message.chat.id, "❌ لم يتم العثور على حسابك. قم بإنشاء حساب أولاً.")
+        import random
+        tg = message.from_user
+        base_uname = (tg.username or f"user_{tg.id}").replace('-', '_')[:30]
+        uname = base_uname
+        counter = 1
+        while uname in users:
+            uname = f"{base_uname}_{counter}"
+            counter += 1
+        password = hashlib.md5(str(tg.id).encode()).hexdigest()[:12]
+        users[uname] = {
+            'password': hashlib.sha256(password.encode()).hexdigest(),
+            'password_plain': password,
+            'max_sessions': 999,
+            'max_servers': 2,
+            'points': 0,
+            'main_file': 'main.py',
+            'created': datetime.now().isoformat(),
+            'expiry': (datetime.now() + timedelta(days=load_subscription_plans().get('free_trial', {}).get('days', 7))).isoformat(),
+            'plan': 'free_trial',
+            'expiry_notified': False,
+            'telegram_id': tg.id,
+            'banned': False,
+            'display_name': tg.first_name or uname,
+        }
+        os.makedirs(os.path.join(USERS_FOLDER, uname), exist_ok=True)
+        assigned_ip = assign_ip(uname)
+        target_uname = uname
+        save_users(users)
+        sync_user_to_panel(uname, password, display_name=tg.first_name or uname)
+        _send_server_created(message.chat.id, tg, uname, password, assigned_ip)
+        _notify_admin_log(
+            f"🖥️ *تم إنشاء حساب تلقائي عبر كود*\n"
+            f"👤 المستخدم: {user_ref(tg)}\n"
+            f"🔑 اسم الحساب: `{uname}`",
+            admin_id=tg.id,
+            markup=_chat_button(tg.id)
+        )
+        found = True
+
+    pts = code_data.get('points', 0)
+    users[target_uname]['points'] = users[target_uname].get('points', 0) + pts
+    save_users(users)
+    codes[code_input]['uses'] = codes[code_input].get('uses', 0) - 1
+    codes[code_input].setdefault('used_by', []).append(user_id)
+    settings['codes'] = codes
+    save_bot_settings(settings)
+    bot.send_message(message.chat.id, f"✅ تم استخدام الكود بنجاح!\n💰 حصلت على *{pts} نقطة*!\n🔹 رصيدك الآن: *{users[target_uname]['points']} نقطة*", parse_mode="Markdown")
+    _notify_admin_log(
+        f"🎟️ *تم استخدام كود*\n"
+        f"👤 المستخدم: {user_ref(message.from_user)}\n"
+        f"🎁 الكود: `{code_input}`\n"
+        f"💰 النقاط الممنوحة: {pts}",
+        admin_id=message.from_user.id,
+        markup=_chat_button(message.from_user.id)
+    )
 
 @bot.message_handler(func=lambda m: m.text == "📊 سيرفراتي")
 def my_servers(message):
