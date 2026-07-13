@@ -47,6 +47,19 @@ echo "  Starting Server Hub Backend on port ${PORT:-3001}"
 echo "=========================================="
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Start Telegram bot in background if BOT_TOKEN is set
+if [ -n "$BOT_TOKEN" ]; then
+    echo "[BOT] Starting Telegram bot..."
+    cd "$SCRIPT_DIR/bot"
+    nohup python3 bot.py > /tmp/bot.log 2>&1 &
+    BOT_PID=$!
+    echo "[BOT] Bot started with PID $BOT_PID (log: /tmp/bot.log)"
+    cd "$SCRIPT_DIR"
+else
+    echo "[BOT] BOT_TOKEN not set — Telegram bot not started"
+fi
+
 cd "$SCRIPT_DIR/backend"
 
 exec node --enable-source-maps dist/index.js
