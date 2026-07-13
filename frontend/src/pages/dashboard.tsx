@@ -250,7 +250,7 @@ export default function Dashboard() {
         <QuickAction icon={Terminal} label={t("terminal")} color="#8b5cf6" onClick={() => window.location.hash = "#/terminal"} />
         <QuickAction icon={Folder} label={t("files")} color="#a855f7" onClick={() => window.location.hash = "#/files"} />
         <QuickAction icon={Bot} label={t("ai_chat")} color="#6d28d9" onClick={() => window.location.hash = "#/ai"} />
-        <QuickAction icon={Globe} label={t("domains") || "Domains"} color="#7c3aed" onClick={() => window.location.hash = "#/domains"} />
+        <QuickAction icon={Globe} label={t("domains")} color="#7c3aed" onClick={() => window.location.hash = "#/domains"} />
       </div>
 
       {/* Startup Section */}

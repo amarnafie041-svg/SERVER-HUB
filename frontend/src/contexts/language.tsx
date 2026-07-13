@@ -128,6 +128,7 @@ const translations = {
     server_hub: "SERVER HUB",
     activity_log: "Activity Log",
     track_all_actions: "Track all user actions and events",
+    domains: "Domains",
   },
   ar: {
     dashboard: "لوحة التحكم",
@@ -254,6 +255,7 @@ const translations = {
     server_hub: "سيرفر هاب",
     activity_log: "سجل النشاط",
     track_all_actions: "تتبع جميع إجراءات المستخدمين والأحداث",
+    domains: "النطاقات",
   },
 } as const;
 
