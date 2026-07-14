@@ -178,7 +178,7 @@ export default function AIPage() {
       const response = await fetch(`${BASE}/api/ai/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ message: msg, model, history, stream: true, thinking: model === "deepseek" ? thinking : undefined }),
+        body: JSON.stringify({ message: msg, model, history, stream: false, thinking: model === "deepseek" ? thinking : undefined }),
         signal: controller.signal,
       });
 
@@ -186,30 +186,12 @@ export default function AIPage() {
         const errBody = await response.json().catch(() => ({ error: response.statusText }));
         throw new Error(errBody.error || `خطأ ${response.status}`);
       }
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let fullContent = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split("\n")) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.content) {
-              fullContent = parsed.content;
-              setMessages((prev) => prev.map((m) => m.id === assistantMsg.id ? { ...m, content: fullContent } : m));
-            }
-          } catch {}
-        }
-      }
+      const result = await response.json();
+      const content = result.content || "⚠️ الـ AI لم يرسل رد";
+      setMessages((prev) => prev.map((m) => m.id === assistantMsg.id ? { ...m, content, streaming: false } : m));
 
       if (currentConvId) {
-        updateConversation(currentConvId, { messages: [...messages, userMsg, { ...assistantMsg, content: fullContent, streaming: false }], model });
+        updateConversation(currentConvId, { messages: [...messages, userMsg, { ...assistantMsg, content, streaming: false }], model });
       }
     } catch (err: any) {
       if (err.name !== "AbortError") {
