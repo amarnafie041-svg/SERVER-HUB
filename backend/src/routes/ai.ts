@@ -164,16 +164,18 @@ router.post("/ai/chat", async (req: Request, res: Response): Promise<void> => {
       const content = data.choices?.[0]?.message?.content || "";
       res.json({ content, model: modelConfig.name });
     }
-  } catch (err: any) {
-    logger.error({ err }, "Failed to call AI");
-    const msg = err.name === "AbortError" ? "AI request timed out (30s)" : `AI error: ${err.message || "Internal error"}`;
-    if (doStream) {
-      if (!res.headersSent) res.writeHead(500, { "Content-Type": "application/json" });
-      res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
-      res.end();
-    } else {
-      res.status(500).json({ error: msg, content: "", model: "unknown" });
-    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    try { logger.error({ err: String(msg) }, "Failed to call AI"); } catch {}
+    try {
+      if (doStream) {
+        if (!res.headersSent) res.writeHead(500, { "Content-Type": "application/json" });
+        res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
+        res.end();
+      } else {
+        res.status(500).json({ error: msg, content: "", model: "unknown" });
+      }
+    } catch {}
   }
 });
 
