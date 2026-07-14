@@ -28,34 +28,95 @@ PANEL_API_URL = os.environ.get('PANEL_API_URL', '').rstrip('/')
 PANEL_SECRET = os.environ.get('BOT_API_SECRET', '')
 
 def sync_user_to_panel(username, password, display_name=None):
-    """Create or update user in the website panel via API."""
-    if not PANEL_API_URL or not PANEL_SECRET:
+    """Create or update user in the website panel via API (or direct file)."""
+    secret = os.environ.get('BOT_API_SECRET', '').strip()
+    api_url = os.environ.get('PANEL_API_URL', '').strip()
+    port = os.environ.get('PORT', '3001')
+    candidates = []
+
+    # Try localhost first (same container)
+    candidates.append(f'http://localhost:{port}')
+
+    # Then try env URL
+    if api_url:
+        candidates.append(api_url.rstrip('/'))
+
+    if not secret:
+        print("❌ BOT_API_SECRET not set — cannot sync user to panel")
         return
+
+    for base_url in candidates:
+        try:
+            data = json.dumps({
+                'username': username,
+                'password': password,
+                'display_name': display_name or username
+            }).encode('utf-8')
+            req = urllib.request.Request(
+                f'{base_url}/api/auth/bot-create',
+                data=data,
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {secret}'
+                },
+                method='POST'
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                result = json.loads(resp.read().decode('utf-8'))
+                if result.get('success') or result.get('message') == 'User already exists':
+                    print(f"✅ Synced user '{username}' to panel via {base_url}")
+                    return
+                else:
+                    print(f"⚠️ Panel sync returned: {result}")
+        except urllib.error.HTTPError as e:
+            body = e.read().decode('utf-8', errors='replace')[:200]
+            print(f"⚠️ Panel sync HTTP {e.code} from {base_url}: {body}")
+        except Exception as e:
+            print(f"⚠️ Panel sync failed for {base_url}: {e}")
+
+    # Fallback: write directly to backend's data file (same container)
     try:
-        data = json.dumps({
-            'username': username,
-            'password': password,
-            'display_name': display_name or username
-        }).encode('utf-8')
-        req = urllib.request.Request(
-            f'{PANEL_API_URL}/api/auth/bot-create',
-            data=data,
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': f'Bearer {PANEL_SECRET}'
-            },
-            method='POST'
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            result = json.loads(resp.read().decode('utf-8'))
-            if result.get('success') or result.get('message') == 'User already exists':
-                print(f"✅ Synced user '{username}' to panel")
-            else:
-                print(f"⚠️ Panel sync returned: {result}")
-    except urllib.error.HTTPError as e:
-        print(f"❌ Panel sync HTTP error {e.code}: {e.read().decode('utf-8', errors='replace')[:200]}")
+        import bcrypt as _bcrypt
+        import json as _json
+        data_file = os.path.join(os.environ.get('HOME', '/root'), '.serverhub', 'v5-data.json')
+        if os.path.exists(data_file):
+            with open(data_file, 'r', encoding='utf-8') as f:
+                panel_data = _json.load(f)
+        else:
+            panel_data = {"users": [], "settings": {}}
+        for u in panel_data.get('users', []):
+            if u.get('username') == username:
+                print(f"✅ User '{username}' already exists in panel data file")
+                return
+        pw_hash = _bcrypt.hashpw(password.encode(), _bcrypt.gensalt()).decode()
+        new_user = {
+            "id": f"user-{int(datetime.now().timestamp() * 1000)}",
+            "username": username,
+            "password_hash": pw_hash,
+            "role": "user",
+            "display_name": display_name or username,
+            "avatar": None,
+            "created_at": datetime.now().isoformat(),
+            "expires_at": None,
+            "disabled": False,
+            "last_login": None,
+            "custom_subdomain": None,
+            "custom_port": None,
+            "cpu_limit": None,
+            "ram_limit": None,
+            "disk_limit": None,
+            "build_cmd": "",
+            "run_cmd": ""
+        }
+        panel_data.setdefault('users', []).append(new_user)
+        os.makedirs(os.path.dirname(data_file), exist_ok=True)
+        with open(data_file, 'w', encoding='utf-8') as f:
+            _json.dump(panel_data, f, indent=2, ensure_ascii=False)
+        print(f"✅ Synced user '{username}' to panel DATA FILE directly (with bcrypt hash)")
+    except ImportError:
+        print("❌ bcrypt not available in Python — cannot sync user directly. Install it: pip install bcrypt")
     except Exception as e:
-        print(f"❌ Panel sync error: {e}")
+        print(f"❌ Panel data file sync error: {e}")
 
 bot = telebot.TeleBot(TOKEN)
 _BOT_DIR = os.path.dirname(os.path.abspath(__file__))

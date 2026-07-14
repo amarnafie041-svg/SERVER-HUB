@@ -16,3 +16,4 @@ pip>=24.0
 setuptools>=69.0
 wheel>=0.43
 pyTelegramBotAPI>=4.0.0
+bcrypt>=4.0.0
