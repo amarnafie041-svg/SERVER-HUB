@@ -237,10 +237,12 @@ const PLANS = [
     features: [
       "🗂️ ملفات غير محدودة",
       "🌐 Subdomain مجاني",
-      "🐍 Python + Node.js + PHP",
-      "📦 مساحة 256MB",
-      "⚙️ رام 128MB",
-      "🔄 30 دقيقة نشاط",
+      "🐍 دعم Python",
+      "💾 Storage 2GB",
+      "⚡ Ram 1GB",
+      "🔒 SSL مجاني",
+      "📊 سجلات (Logs) مباشرة",
+      "🔐 حماية متقدمة ضد الهجمات",
     ],
   },
   {
@@ -255,16 +257,20 @@ const PLANS = [
     features: [
       "🗂️ ملفات غير محدودة",
       "🌐 Subdomain مجاني",
-      "🐍 Python + Node.js + PHP",
-      "📦 مساحة 512MB",
-      "⚙️ رام 256MB",
-      "🔄 2 ساعة نشاط",
-      "🎯 أولوية دعم فني",
+      "🐍 دعم Python + Node.js + PHP",
+      "💾 Storage 5GB",
+      "⚡ Ram 4GB",
+      "♾️ Bandwidth غير محدود",
+      "🔄 تشغيل 24/7",
+      "🔒 SSL مجاني",
+      "🔐 حماية متقدمة ضد الهجمات",
+      "🛡️ عزل لكل مشروع داخل بيئة آمنة",
+      "🎯 أولوية في الدعم الفني",
     ],
   },
   {
     name: "PRO MAX",
-    sub: "أقصى",
+    sub: "الأقوى",
     price: "5",
     period: "30 يوم",
     color: "#f59e0b",
@@ -273,12 +279,17 @@ const PLANS = [
     features: [
       "🗂️ ملفات غير محدودة",
       "🌐 Subdomain مجاني",
-      "🐍 Python + Node.js + PHP",
-      "📦 مساحة 1GB",
-      "⚙️ رام 512MB",
-      "🔄 نشاط غير محدود",
-      "👑 دعم فني VIP",
+      "🐍 دعم Python + Node.js + PHP",
+      "💾 Storage 10GB",
+      "⚡ Ram 8GB",
+      "♾️ Bandwidth غير محدود",
+      "🔄 تشغيل 24/7 بدون توقف",
       "🔒 SSL مجاني",
+      "🔐 حماية متقدمة ضد الهجمات",
+      "🛡️ عزل لكل مشروع داخل بيئة آمنة",
+      "👑 دعم فني VIP",
+      "🚀 أولوية في موارد السيرفر",
+      "📈 أداء أعلى واستجابة أسرع",
     ],
   },
 ];
@@ -407,6 +418,72 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── PLANS / PRICING ── */}
+      <section ref={plansRef} className="reveal-section py-16 md:py-24 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 text-center">
+          <h2 className="text-white text-xl md:text-2xl font-bold mb-2">اختر خطتك المناسبة</h2>
+          <p className="text-zinc-500 text-sm mb-10">ابدأ مجاناً وطور مشاريعك مع باقتنا المميزة</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-5">
+            {PLANS.map((plan, i) => (
+              <div
+                key={i}
+                className="relative group rounded-2xl p-6 text-center transition-all duration-500 hover:scale-[1.03]"
+                style={{
+                  background: plan.popular
+                    ? "linear-gradient(135deg, rgba(139,92,246,0.12), rgba(139,92,246,0.04))"
+                    : "rgba(15,10,30,0.7)",
+                  border: plan.popular ? `2px solid ${plan.border}` : `1px solid ${plan.border}`,
+                  backdropFilter: "blur(10px)",
+                  boxShadow: plan.popular ? `0 0 40px ${plan.glow}` : "none",
+                }}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white"
+                    style={{ background: "linear-gradient(135deg, #6d28d9, #8b5cf6)" }}>
+                    الأكثر طلباً
+                  </div>
+                )}
+                <div className="w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center text-xl font-extrabold"
+                  style={{ background: `${plan.color}15`, border: `1px solid ${plan.border}`, color: plan.color }}>
+                  {plan.name === "FREE" ? "🆓" : plan.name === "PRO" ? "⭐" : "👑"}
+                </div>
+                <h3 className="text-white text-lg font-extrabold mb-0.5">{plan.name}</h3>
+                <p className="text-zinc-500 text-xs mb-4">{plan.sub}</p>
+                <div className="flex items-baseline justify-center gap-1 mb-1">
+                  <span className="text-3xl md:text-4xl font-extrabold text-white">{plan.price}</span>
+                  {plan.price !== "0" && <span className="text-zinc-500 text-sm">$</span>}
+                </div>
+                <p className="text-zinc-600 text-[11px] mb-5">/{plan.period}</p>
+                <div className="space-y-2.5 mb-6">
+                  {plan.features.map((feat, j) => (
+                    <div key={j} className="flex items-center gap-2 text-right">
+                      <span className="text-zinc-300 text-xs">{feat}</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    if (plan.price === "0") { window.location.hash = "#/login"; return; }
+                    const msg = encodeURIComponent("السلام عليكم\nبدي اشتري سيرفر " + plan.name + " فين اقدر ادفع");
+                    window.open(`https://t.me/I_tt_6?text=${msg}`, "_blank");
+                  }}
+                  className="w-full h-11 rounded-xl text-white text-sm font-bold cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-95"
+                  style={{
+                    background: plan.popular
+                      ? "linear-gradient(135deg, #6d28d9, #8b5cf6)"
+                      : "transparent",
+                    border: plan.popular ? "none" : `1.5px solid ${plan.border}`,
+                    boxShadow: plan.popular ? `0 4px 24px ${plan.glow}` : "none",
+                  }}
+                >
+                  {plan.price === "0" ? "ابدأ مجاناً" : "اشترك الآن"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── FEATURES ── */}
       <section ref={featuresRef} className="reveal-section py-16 md:py-24 relative z-10">
         <div className="max-w-6xl mx-auto px-4 md:px-8">
@@ -472,72 +549,6 @@ export default function LandingPage() {
                   {l.icon}
                 </div>
                 <span className="text-zinc-400 text-sm font-medium group-hover:text-white transition-colors">{l.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── PLANS / PRICING ── */}
-      <section ref={plansRef} className="reveal-section py-16 md:py-24 relative z-10">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 text-center">
-          <h2 className="text-white text-xl md:text-2xl font-bold mb-2">اختر خطتك المناسبة</h2>
-          <p className="text-zinc-500 text-sm mb-10">ابدأ مجاناً وطور مشاريعك مع باقتنا المميزة</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-5">
-            {PLANS.map((plan, i) => (
-              <div
-                key={i}
-                className="relative group rounded-2xl p-6 text-center transition-all duration-500 hover:scale-[1.03]"
-                style={{
-                  background: plan.popular
-                    ? "linear-gradient(135deg, rgba(139,92,246,0.12), rgba(139,92,246,0.04))"
-                    : "rgba(15,10,30,0.7)",
-                  border: plan.popular ? `2px solid ${plan.border}` : `1px solid ${plan.border}`,
-                  backdropFilter: "blur(10px)",
-                  boxShadow: plan.popular ? `0 0 40px ${plan.glow}` : "none",
-                }}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white"
-                    style={{ background: "linear-gradient(135deg, #6d28d9, #8b5cf6)" }}>
-                    الأكثر طلباً
-                  </div>
-                )}
-                <div className="w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center text-xl font-extrabold"
-                  style={{ background: `${plan.color}15`, border: `1px solid ${plan.border}`, color: plan.color }}>
-                  {plan.name === "FREE" ? "🆓" : plan.name === "PRO" ? "⭐" : "👑"}
-                </div>
-                <h3 className="text-white text-lg font-extrabold mb-0.5">{plan.name}</h3>
-                <p className="text-zinc-500 text-xs mb-4">{plan.sub}</p>
-                <div className="flex items-baseline justify-center gap-1 mb-1">
-                  <span className="text-3xl md:text-4xl font-extrabold text-white">{plan.price}</span>
-                  {plan.price !== "0" && <span className="text-zinc-500 text-sm">$</span>}
-                </div>
-                <p className="text-zinc-600 text-[11px] mb-5">/{plan.period}</p>
-                <div className="space-y-2.5 mb-6">
-                  {plan.features.map((feat, j) => (
-                    <div key={j} className="flex items-center gap-2 text-right">
-                      <span className="text-zinc-300 text-xs">{feat}</span>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => {
-                    if (plan.price === "0") { window.location.hash = "#/login"; return; }
-                    const msg = encodeURIComponent("السلام عليكم\nبدي اشتري سيرفر " + plan.name + " فين اقدر ادفع");
-                    window.open(`https://t.me/I_tt_6?text=${msg}`, "_blank");
-                  }}
-                  className="w-full h-11 rounded-xl text-white text-sm font-bold cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-95"
-                  style={{
-                    background: plan.popular
-                      ? "linear-gradient(135deg, #6d28d9, #8b5cf6)"
-                      : "transparent",
-                    border: plan.popular ? "none" : `1.5px solid ${plan.border}`,
-                    boxShadow: plan.popular ? `0 4px 24px ${plan.glow}` : "none",
-                  }}
-                >
-                  {plan.price === "0" ? "ابدأ مجاناً" : "اشترك الآن"}
-                </button>
               </div>
             ))}
           </div>
