@@ -654,7 +654,7 @@ def my_info(message):
     msg = f"👤 **ملفك الشخصي:**\n\n"
     msg += f"📦 باقتك: {plan_info.get('label', plan_key)} — {expiry_txt}\n"
     msg += f"💰 النقاط: `{first_data.get('points', 0)}` نقطة\n"
-    msg += f"🖥️ السيرفرات المتاحة: `{first_data.get('max_servers', 2)}`\n"
+    msg += f"🖥️ السيرفرات المتاحة: `{first_data.get('max_servers', 1)}`\n"
     msg += f"📅 تاريخ الإنشاء: `{first_data.get('created', '-')[:10]}`\n\n"
     msg += f"━━━━━━━━━━━━━━━━━━\n"
     msg += f"🖥️ **سيرفراتك ({len(my_servers)}):**\n\n"
@@ -757,11 +757,11 @@ def process_password(message, username):
         'password': hashlib.sha256(password.encode()).hexdigest(),
         'password_plain': password,
         'max_sessions': 999,
-        'max_servers': 2,
+        'max_servers': 1,
         'points': 0,
         'main_file': 'main.py',
         'created': datetime.now().isoformat(),
-        'expiry': (datetime.now() + timedelta(days=load_subscription_plans().get('free_trial', {}).get('days', 7))).isoformat(),
+        'expiry': (datetime.now() + timedelta(days=load_subscription_plans().get('free_trial', {}).get('days', 1))).isoformat(),
         'plan': 'free_trial',
         'expiry_notified': False,
         'telegram_id': message.from_user.id,
@@ -901,11 +901,11 @@ def process_paid_password(message, username):
         'password': hashlib.sha256(password.encode()).hexdigest(),
         'password_plain': password,
         'max_sessions': 999,
-        'max_servers': 2,
+        'max_servers': 1,
         'points': 0,
         'main_file': 'main.py',
         'created': datetime.now().isoformat(),
-        'expiry': (datetime.now() + timedelta(days=load_subscription_plans().get('free_trial', {}).get('days', 7))).isoformat(),
+        'expiry': (datetime.now() + timedelta(days=load_subscription_plans().get('free_trial', {}).get('days', 1))).isoformat(),
         'plan': 'free_trial',
         'expiry_notified': False,
         'telegram_id': message.from_user.id,
@@ -1162,11 +1162,11 @@ def process_code(message):
             'password': hashlib.sha256(auto_pass.encode()).hexdigest(),
             'password_plain': auto_pass,
             'max_sessions': 999,
-            'max_servers': 2,
+            'max_servers': 1,
             'points': 0,
             'main_file': 'main.py',
             'created': datetime.now().isoformat(),
-            'expiry': (datetime.now() + timedelta(days=load_subscription_plans().get('free_trial', {}).get('days', 7))).isoformat(),
+            'expiry': (datetime.now() + timedelta(days=load_subscription_plans().get('free_trial', {}).get('days', 1))).isoformat(),
             'plan': 'free_trial',
             'expiry_notified': False,
             'telegram_id': tg.id,
@@ -1944,7 +1944,7 @@ def admin_check_user_step(message):
         f"🔑 كلمة المرور: `{password}`\n"
         f"📊 الحالة: {status}\n"
         f"💰 النقاط: `{data.get('points', 0)}`\n"
-        f"🖥️ السيرفرات المسموحة: `{data.get('max_servers', 2)}`\n"
+        f"🖥️ السيرفرات المسموحة: `{data.get('max_servers', 1)}`\n"
         f"📦 الباقة: {plan_info.get('label', plan_key)}\n"
         f"⏳ الانتهاء: {expiry_txt}\n"
         f"🔗 عدد الدعوات: `{invited}`\n"
