@@ -19,19 +19,19 @@ interface ModelConfig {
 }
 
 const AI_MODELS: Record<string, ModelConfig> = {
-  "llama": {
-    model: "meta/llama-3.1-8b-instruct",
+  "gpt-oss": {
+    model: "openai/gpt-oss-20b",
     temp: 1,
     top_p: 1,
     max_tokens: 4096,
-    name: "Llama 3.1 8B",
+    name: "GPT-OSS 20B",
   },
   "deepseek": {
-    model: "deepseek-ai/deepseek-r1",
+    model: "deepseek-ai/deepseek-v4-pro",
     temp: 1,
     top_p: 0.95,
     max_tokens: 16384,
-    name: "DeepSeek R1",
+    name: "DeepSeek V4 Pro",
     thinking: true,
   },
 };
@@ -63,7 +63,7 @@ router.post("/ai/chat", authenticate, async (req: Request, res: Response): Promi
       return;
     }
 
-    const modelConfig = AI_MODELS[modelKey] || AI_MODELS["llama"];
+    const modelConfig = AI_MODELS[modelKey] || AI_MODELS["gpt-oss"];
 
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -188,7 +188,7 @@ router.post("/ai/analyze", authenticate, async (req: Request, res: Response): Pr
       return;
     }
 
-    const modelConfig = AI_MODELS["llama"];
+    const modelConfig = AI_MODELS["gpt-oss"];
 
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },

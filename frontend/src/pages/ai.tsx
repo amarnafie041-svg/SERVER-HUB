@@ -16,7 +16,7 @@ function getToken(): string | null {
   return localStorage.getItem("sh_token");
 }
 
-type Model = "llama" | "deepseek";
+type Model = "gpt-oss" | "deepseek";
 
 interface Message {
   id: string;
@@ -37,8 +37,8 @@ interface Conversation {
 }
 
 const MODEL_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
-  "llama": { label: "Llama 3.1 8B", icon: Sparkles, color: "#22c55e" },
-  "deepseek": { label: "DeepSeek R1", icon: Terminal, color: "#3b82f6" },
+  "gpt-oss": { label: "GPT-OSS 20B", icon: Sparkles, color: "#22c55e" },
+  "deepseek": { label: "DeepSeek V4 Pro", icon: Terminal, color: "#3b82f6" },
 };
 
 const STORAGE_KEY = "sh_ai_conversations";
@@ -78,7 +78,7 @@ export default function AIPage() {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [model, setModel] = useState<Model>("llama");
+  const [model, setModel] = useState<Model>("gpt-oss");
   const [thinking, setThinking] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "analyze">("chat");
