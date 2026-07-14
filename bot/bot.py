@@ -610,12 +610,14 @@ def start(message):
     )
     bot.send_photo(
         message.chat.id,
-        photo="https://ibb.co/B202WyPL",
+        photo="https://ibb.co/dJHqVjjg",
         caption=welcome_caption,
         parse_mode="MarkdownV2",
         reply_markup=main_keyboard(message.from_user.id)
     )
 
+# ──────────────────────────────────────────────
+#  إنشاء سيرفر
 # ──────────────────────────────────────────────
 #  ملفي الشخصي
 # ──────────────────────────────────────────────
@@ -805,7 +807,7 @@ def _send_server_created(chat_id, user, username, password, assigned_ip):
         markup_photo.add(ikb_button("🌐 لوحة التحكم", url=panel_url, style="primary"))
     bot.send_photo(
         chat_id,
-        photo="https://ibb.co/B202WyPL",
+        photo="https://ibb.co/Lzr7DC4D",
         caption=caption,
         parse_mode="MarkdownV2",
         reply_markup=markup_photo
@@ -1415,7 +1417,7 @@ def check_sub_verify(call):
     )
     bot.send_photo(
         call.message.chat.id,
-        photo="https://ibb.co/B202WyPL",
+        photo="https://ibb.co/dJHqVjjg",
         caption=welcome_caption,
         parse_mode="MarkdownV2",
         reply_markup=main_keyboard(call.from_user.id)

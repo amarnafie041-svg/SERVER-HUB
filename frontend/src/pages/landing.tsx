@@ -246,7 +246,7 @@ const PLANS = [
   {
     name: "PRO",
     sub: "مميز",
-    price: "15",
+    price: "3",
     period: "30 يوم",
     color: "#8b5cf6",
     border: "rgba(139,92,246,0.4)",
@@ -265,7 +265,7 @@ const PLANS = [
   {
     name: "PRO MAX",
     sub: "أقصى",
-    price: "25",
+    price: "5",
     period: "30 يوم",
     color: "#f59e0b",
     border: "rgba(245,158,11,0.4)",
@@ -511,7 +511,7 @@ export default function LandingPage() {
                 <p className="text-zinc-500 text-xs mb-4">{plan.sub}</p>
                 <div className="flex items-baseline justify-center gap-1 mb-1">
                   <span className="text-3xl md:text-4xl font-extrabold text-white">{plan.price}</span>
-                  {plan.price !== "0" && <span className="text-zinc-500 text-sm">نجمة</span>}
+                  {plan.price !== "0" && <span className="text-zinc-500 text-sm">$</span>}
                 </div>
                 <p className="text-zinc-600 text-[11px] mb-5">/{plan.period}</p>
                 <div className="space-y-2.5 mb-6">
@@ -522,7 +522,11 @@ export default function LandingPage() {
                   ))}
                 </div>
                 <button
-                  onClick={() => window.location.hash = "#/login"}
+                  onClick={() => {
+                    if (plan.price === "0") { window.location.hash = "#/login"; return; }
+                    const msg = encodeURIComponent("السلام عليكم\nبدي اشتري سيرفر " + plan.name + " فين اقدر ادفع");
+                    window.open(`https://t.me/I_tt_6?text=${msg}`, "_blank");
+                  }}
                   className="w-full h-11 rounded-xl text-white text-sm font-bold cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-95"
                   style={{
                     background: plan.popular
