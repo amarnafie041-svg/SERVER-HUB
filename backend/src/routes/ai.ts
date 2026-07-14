@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { Request, Response } from "express";
 import * as fs from "fs";
+import * as https from "https";
 import { logger } from "../lib/logger";
 import { authenticate } from "../middleware/authenticate";
 
@@ -35,6 +36,41 @@ const AI_MODELS: Record<string, ModelConfig> = {
     thinking: true,
   },
 };
+
+function httpsRequest(url: string, body: string, apiKey: string, timeoutMs = 30000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const data = Buffer.from(body, "utf-8");
+    const options: https.RequestOptions = {
+      hostname: urlObj.hostname,
+      port: 443,
+      path: urlObj.pathname + urlObj.search,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Length": data.length,
+      },
+      timeout: timeoutMs,
+    };
+    const req = https.request(options, (res) => {
+      let chunks: Buffer[] = [];
+      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      res.on("end", () => {
+        const result = Buffer.concat(chunks).toString("utf-8");
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(result);
+        } else {
+          reject(new Error(`NVIDIA API ${res.statusCode}: ${result.slice(0, 500)}`));
+        }
+      });
+    });
+    req.on("error", (e) => reject(new Error(`Request failed: ${e.message}`)));
+    req.on("timeout", () => { req.destroy(); reject(new Error("Request timed out")); });
+    req.write(data);
+    req.end();
+  });
+}
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant specialized in SERVER HUB — a professional server management platform.
 You have expertise in server administration, Linux, Python, Node.js, PHP, Docker, and programming in general.
@@ -99,71 +135,36 @@ router.post("/ai/chat", async (req: Request, res: Response): Promise<void> => {
       res.flushHeaders();
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const raw = await httpsRequest(
+      `${NVIDIA_BASE_URL}/chat/completions`,
+      JSON.stringify(requestBody),
+      NVIDIA_API_KEY,
+      30000
+    );
 
-    const response = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${NVIDIA_API_KEY}`,
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-    }).finally(() => clearTimeout(timeout));
-
-    if (!response.ok) {
-      const errText = await response.text();
-      logger.error({ status: response.status, body: errText }, "AI API error");
-      if (doStream) {
-        res.write(`data: ${JSON.stringify({ error: `AI API error: ${response.status} ${errText.slice(0, 100)}` })}\n\n`);
-        res.end();
-      } else {
-        res.status(502).json({ error: `AI API error: ${errText.slice(0, 200)}`, content: "", model: modelConfig.name });
-      }
-      return;
-    }
-
-    if (doStream && response.body) {
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+    if (doStream) {
+      res.setHeader("Content-Type", "text/event-stream");
+      const lines = raw.split("\n");
       let fullContent = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6).trim();
-            if (data === "[DONE]") {
-              res.write(`data: [DONE]\n\n`);
-              continue;
-            }
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta;
-              const reasoning = delta?.reasoning_content || "";
-              const content = delta?.content || "";
-              if (reasoning || content) {
-                fullContent += reasoning || content;
-                res.write(
-                  `data: ${JSON.stringify({ delta: reasoning || content, content: fullContent, model: modelConfig.name })}\n\n`
-                );
-              }
-            } catch {
-              // skip malformed chunk
-            }
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") { res.write("data: [DONE]\n\n"); continue; }
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta;
+          const reasoning = delta?.reasoning_content || "";
+          const content = delta?.content || "";
+          if (reasoning || content) {
+            fullContent += reasoning || content;
+            res.write(`data: ${JSON.stringify({ delta: reasoning || content, content: fullContent, model: modelConfig.name })}\n\n`);
           }
-        }
+        } catch { /* skip malformed chunk */ }
       }
       res.end();
     } else {
-      const data = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-      const content = data.choices?.[0]?.message?.content || "";
+      const parsed = JSON.parse(raw);
+      const content = parsed.choices?.[0]?.message?.content || "";
       res.json({ content, model: modelConfig.name });
     }
   } catch (err: unknown) {
