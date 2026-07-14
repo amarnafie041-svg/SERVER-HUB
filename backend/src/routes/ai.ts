@@ -85,6 +85,10 @@ router.put("/ai/settings", authenticate, async (_req: Request, res: Response): P
   res.json({ success: true });
 });
 
+router.get("/ai/ping", async (_req: Request, res: Response): Promise<void> => {
+  res.json({ ok: true, has_key: !!NVIDIA_API_KEY });
+});
+
 router.post("/ai/chat", async (req: Request, res: Response): Promise<void> => {
   try {
     const startTime = Date.now();
