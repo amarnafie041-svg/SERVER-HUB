@@ -12,7 +12,11 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { BASE } from "@/lib/api";
 
-type Model = "gpt-oss" | "deepseek";
+function getToken(): string | null {
+  return localStorage.getItem("sh_token");
+}
+
+type Model = "llama" | "deepseek";
 
 interface Message {
   id: string;
@@ -33,8 +37,8 @@ interface Conversation {
 }
 
 const MODEL_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
-  "gpt-oss": { label: "GPT-OSS 20B", icon: Sparkles, color: "#22c55e" },
-  "deepseek": { label: "DeepSeek V4 Pro", icon: Terminal, color: "#3b82f6" },
+  "llama": { label: "Llama 3.1 8B", icon: Sparkles, color: "#22c55e" },
+  "deepseek": { label: "DeepSeek R1", icon: Terminal, color: "#3b82f6" },
 };
 
 const STORAGE_KEY = "sh_ai_conversations";
@@ -74,7 +78,7 @@ export default function AIPage() {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [model, setModel] = useState<Model>("gpt-oss");
+  const [model, setModel] = useState<Model>("llama");
   const [thinking, setThinking] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "analyze">("chat");
@@ -98,14 +102,14 @@ export default function AIPage() {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2),
       title: "محادثة جديدة",
       messages: [],
-      model: "gpt-oss",
+      model: "llama",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
     setConversations((prev) => [newConv, ...prev]);
     setActiveConvId(newConv.id);
     setMessages([]);
-    setModel("gpt-oss");
+    setModel("llama");
   }, []);
 
   const selectConversation = useCallback((convId: string) => {
@@ -170,9 +174,10 @@ export default function AIPage() {
     abortControllerRef.current = controller;
 
     try {
+      const token = getToken();
       const response = await fetch(`${BASE}/api/ai/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ message: msg, model, history, stream: true, thinking: model === "deepseek" ? thinking : undefined }),
         signal: controller.signal,
       });
@@ -220,9 +225,10 @@ export default function AIPage() {
     if (!analyzePath.trim() || !analyzeQuestion.trim() || analyzing) return;
     setAnalyzing(true);
     try {
+      const token = getToken();
       const response = await fetch(`${BASE}/api/ai/analyze`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ path: analyzePath, question: analyzeQuestion }),
       });
       const result = await response.json();

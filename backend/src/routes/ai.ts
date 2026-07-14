@@ -6,8 +6,8 @@ import { authenticate } from "../middleware/authenticate";
 
 const router: IRouter = Router();
 
-const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
-const NVIDIA_API_KEY = "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";
+const NVIDIA_BASE_URL = process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1";
+const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || "";
 
 interface ModelConfig {
   model: string;
@@ -19,19 +19,19 @@ interface ModelConfig {
 }
 
 const AI_MODELS: Record<string, ModelConfig> = {
-  "gpt-oss": {
-    model: "openai/gpt-oss-20b",
+  "llama": {
+    model: "meta/llama-3.1-8b-instruct",
     temp: 1,
     top_p: 1,
     max_tokens: 4096,
-    name: "GPT-OSS 20B",
+    name: "Llama 3.1 8B",
   },
   "deepseek": {
-    model: "deepseek-ai/deepseek-v4-pro",
+    model: "deepseek-ai/deepseek-r1",
     temp: 1,
     top_p: 0.95,
     max_tokens: 16384,
-    name: "DeepSeek V4 Pro",
+    name: "DeepSeek R1",
     thinking: true,
   },
 };
@@ -42,23 +42,28 @@ Provide clear, concise, and accurate responses. Format code blocks with proper m
 When writing code, always provide complete, working examples.`;
 
 router.get("/ai/settings", authenticate, async (_req: Request, res: Response): Promise<void> => {
-  res.json({ has_key: true });
+  res.json({ has_key: !!NVIDIA_API_KEY });
 });
 
 router.put("/ai/settings", authenticate, async (_req: Request, res: Response): Promise<void> => {
   res.json({ success: true });
 });
 
-router.post("/ai/chat", async (req: Request, res: Response): Promise<void> => {
+router.post("/ai/chat", authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const { message, model: modelKey, history = [], stream: doStream, thinking } = req.body;
+
+    if (!NVIDIA_API_KEY) {
+      res.status(503).json({ error: "AI service not configured — NVIDIA_API_KEY is missing" });
+      return;
+    }
 
     if (!message || typeof message !== "string") {
       res.status(400).json({ error: "Message required" });
       return;
     }
 
-    const modelConfig = AI_MODELS[modelKey] || AI_MODELS["gpt-oss"];
+    const modelConfig = AI_MODELS[modelKey] || AI_MODELS["llama"];
 
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -165,6 +170,11 @@ router.post("/ai/analyze", authenticate, async (req: Request, res: Response): Pr
   try {
     const { path: filePath, question } = req.body;
 
+    if (!NVIDIA_API_KEY) {
+      res.status(503).json({ error: "AI service not configured — NVIDIA_API_KEY is missing" });
+      return;
+    }
+
     if (!filePath || !question) {
       res.status(400).json({ error: "Path and question required" });
       return;
@@ -178,7 +188,7 @@ router.post("/ai/analyze", authenticate, async (req: Request, res: Response): Pr
       return;
     }
 
-    const modelConfig = AI_MODELS["gpt-oss"];
+    const modelConfig = AI_MODELS["llama"];
 
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },

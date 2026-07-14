@@ -28,7 +28,7 @@ PANEL_API_URL = os.environ.get('PANEL_API_URL', '').rstrip('/')
 PANEL_SECRET = os.environ.get('BOT_API_SECRET', '')
 
 def sync_user_to_panel(username, password, display_name=None):
-    """Create or update user in the website panel via API (or direct file)."""
+    """Create or update user in the website panel via API (or direct file). Returns assigned port or None."""
     secret = os.environ.get('BOT_API_SECRET', '').strip()
     api_url = os.environ.get('PANEL_API_URL', '').strip()
     port = os.environ.get('PORT', '3001')
@@ -43,10 +43,11 @@ def sync_user_to_panel(username, password, display_name=None):
 
     if not secret:
         print("❌ BOT_API_SECRET not set — cannot sync user to panel")
-        return
+        return None
 
     trial_days = load_subscription_plans().get('free_trial', {}).get('days', 1)
     expires_at = (datetime.now() + timedelta(days=trial_days)).isoformat()
+    assigned_port = None
     for base_url in candidates:
         try:
             data = json.dumps({
@@ -68,7 +69,9 @@ def sync_user_to_panel(username, password, display_name=None):
                 result = json.loads(resp.read().decode('utf-8'))
                 if result.get('success') or result.get('message') == 'User already exists':
                     print(f"✅ Synced user '{username}' to panel via {base_url}")
-                    return
+                    if result.get('user', {}).get('custom_port'):
+                        assigned_port = result['user']['custom_port']
+                    return assigned_port
                 else:
                     print(f"⚠️ Panel sync returned: {result}")
         except urllib.error.HTTPError as e:
@@ -90,7 +93,18 @@ def sync_user_to_panel(username, password, display_name=None):
         for u in panel_data.get('users', []):
             if u.get('username') == username:
                 print(f"✅ User '{username}' already exists in panel data file")
-                return
+                return u.get('custom_port') or None
+        # Assign sequential port (8000 + number of existing users)
+        existing_ports = set()
+        for u in panel_data.get('users', []):
+            p = u.get('custom_port')
+            if p:
+                existing_ports.add(p)
+        free_port = None
+        for p in range(8000, 9000):
+            if p not in existing_ports:
+                free_port = p
+                break
         pw_hash = _bcrypt.hashpw(password.encode(), _bcrypt.gensalt()).decode()
         new_user = {
             "id": f"user-{int(datetime.now().timestamp() * 1000)}",
@@ -104,7 +118,7 @@ def sync_user_to_panel(username, password, display_name=None):
             "disabled": False,
             "last_login": None,
             "custom_subdomain": None,
-            "custom_port": None,
+            "custom_port": free_port,
             "cpu_limit": None,
             "ram_limit": None,
             "disk_limit": None,
@@ -115,7 +129,8 @@ def sync_user_to_panel(username, password, display_name=None):
         os.makedirs(os.path.dirname(data_file), exist_ok=True)
         with open(data_file, 'w', encoding='utf-8') as f:
             _json.dump(panel_data, f, indent=2, ensure_ascii=False)
-        print(f"✅ Synced user '{username}' to panel DATA FILE directly (with bcrypt hash)")
+        print(f"✅ Synced user '{username}' to panel DATA FILE directly (with bcrypt hash), port={free_port}")
+        return free_port
     except ImportError:
         print("❌ bcrypt not available in Python — cannot sync user directly. Install it: pip install bcrypt")
     except Exception as e:
@@ -776,8 +791,8 @@ def process_password(message, username):
     save_users(users)
     os.makedirs(os.path.join(USERS_FOLDER, username), exist_ok=True)
     assigned_ip = assign_ip(username)
-    sync_user_to_panel(username, password)
-    _send_server_created(message.chat.id, message.from_user, username, password, assigned_ip)
+    assigned_port = sync_user_to_panel(username, password)
+    _send_server_created(message.chat.id, message.from_user, username, password, assigned_ip, assigned_port)
     _notify_admin_log(
         f"🖥️ *تم إنشاء سيرفر جديد*\n"
         f"👤 المستخدم: {user_ref(message.from_user)}\n"
@@ -786,20 +801,26 @@ def process_password(message, username):
         markup=_chat_button(message.from_user.id)
     )
 
-def _send_server_created(chat_id, user, username, password, assigned_ip):
+def _send_server_created(chat_id, user, username, password, assigned_ip, custom_port=None):
     settings = load_bot_settings()
     panel_url = settings.get('panel_url', '').strip()
     base_url = (panel_url.rstrip('/') or 'https://server-hub-v1-0.onrender.com')
     ip_str = escape_md2(assigned_ip or 'غير متاح')
     uname_str = escape_md2(username)
     pass_str = escape_md2(password)
-    caption = (
-        f">تـم إنشـاء السـيـرفر بـنجـاح  💫\n"
-        f">\n"
-        f">🌐 الـ IP  :  `{ip_str}`\n"
-        f">إسم المسـتخدم  :  `{uname_str}`\n"
-        f">كلـمـة المـرور  :  `{pass_str}`"
-    )
+    port_str = escape_md2(str(custom_port)) if custom_port else None
+    caption_lines = [
+        ">تـم إنشـاء السـيـرفر بـنجـاح  💫",
+        ">",
+        f">🌐 الـ IP  :  `{ip_str}`",
+    ]
+    if port_str:
+        caption_lines.append(f">🏷️ الـ Port  :  `{port_str}`")
+    caption_lines += [
+        f">إسم المسـتخدم  :  `{uname_str}`",
+        f">كلـمـة المـرور  :  `{pass_str}`",
+    ]
+    caption = "\n".join(caption_lines)
     markup_photo = types.InlineKeyboardMarkup(row_width=1)
     server_url = f"{base_url}/terminal?username={username}"
     markup_photo.add(ikb_button("🌐 الذهاب للسيرفر", url=server_url, style="primary"))
@@ -1016,8 +1037,8 @@ def process_paid_password(message, username):
     save_users(users)
     os.makedirs(os.path.join(USERS_FOLDER, username), exist_ok=True)
     assigned_ip = assign_ip(username)
-    sync_user_to_panel(username, password)
-    _send_server_created(message.chat.id, message.from_user, username, password, assigned_ip)
+    assigned_port = sync_user_to_panel(username, password)
+    _send_server_created(message.chat.id, message.from_user, username, password, assigned_ip, assigned_port)
     _notify_admin_log(
         f"🖥️ *تم شراء سيرفر إضافي بالنقاط*\n"
         f"👤 المستخدم: {user_ref(message.from_user)}\n"
@@ -1280,7 +1301,7 @@ def process_code(message):
         assign_ip(uname)
         target_uname = uname
         save_users(users)
-        sync_user_to_panel(uname, auto_pass, display_name=tg.first_name or uname)
+        assigned_port = sync_user_to_panel(uname, auto_pass, display_name=tg.first_name or uname)
         _notify_admin_log(
             f"👤 *تم إنشاء حساب تلقائي عبر كود*\n"
             f"👤 المستخدم: {user_ref(tg)}\n"
@@ -1806,12 +1827,14 @@ def admin_callbacks(call):
                     save_users(users_all)
                     os.makedirs(os.path.join(USERS_FOLDER, new_username), exist_ok=True)
                     assign_ip(new_username)
-                    sync_user_to_panel(new_username, auto_pass)
+                    assigned_port = sync_user_to_panel(new_username, auto_pass)
+                    port_line = f"🏷️ البورت: `{assigned_port}`\n" if assigned_port else ""
                     try:
                         bot.send_message(tg_id,
                             f"🎉 **تم إنشاء حسابك الإضافي بنجاح!**\n\n"
                             f"👤 اسم المستخدم: `{new_username}`\n"
                             f"🔑 كلمة السر: `{auto_pass}`\n"
+                            f"{port_line}"
                             f"💰 تم خصم `{cost}` نقطة من رصيدك.",
                             parse_mode="Markdown")
                     except Exception:

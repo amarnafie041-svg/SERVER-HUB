@@ -8,6 +8,7 @@ import { notify } from "../lib/telegram";
 import { logger } from "../lib/logger";
 import { logActivity } from "./activity";
 import { killAllSessionsForUser } from "./terminal";
+import { portManager } from "../lib/port-manager";
 
 const router: IRouter = Router();
 const BOT_SECRET = process.env.BOT_API_SECRET || "";
@@ -66,8 +67,16 @@ router.post("/auth/bot-create", async (req: Request, res: Response): Promise<voi
       disabled: false,
     };
     const user = storage.createUser(newUser);
+
+    // Auto-assign unique port for this user
+    const freePort = portManager.findFreePort();
+    if (freePort) {
+      storage.updateUser(user.id, { custom_port: freePort });
+      portManager.allocatePort(freePort, user.id, username, `user-${username}`);
+    }
+
     logActivity({ user: username, action: "register", target: "auth", details: "Registered via bot", ip: req.ip || "unknown", status: "success" });
-    res.status(201).json({ success: true, user: { id: user.id, username: user.username, role: user.role } });
+    res.status(201).json({ success: true, user: { id: user.id, username: user.username, role: user.role, custom_port: freePort || null } });
   } catch (err) {
     logger.error({ err }, "Bot create user failed");
     res.status(500).json({ error: "Server error" });
