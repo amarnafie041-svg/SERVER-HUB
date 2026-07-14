@@ -102,14 +102,14 @@ export default function AIPage() {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2),
       title: "محادثة جديدة",
       messages: [],
-      model: "llama",
+      model: "gpt-oss",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
     setConversations((prev) => [newConv, ...prev]);
     setActiveConvId(newConv.id);
     setMessages([]);
-    setModel("llama");
+    setModel("gpt-oss");
   }, []);
 
   const selectConversation = useCallback((convId: string) => {
