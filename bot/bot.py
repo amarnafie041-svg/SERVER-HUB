@@ -45,12 +45,15 @@ def sync_user_to_panel(username, password, display_name=None):
         print("❌ BOT_API_SECRET not set — cannot sync user to panel")
         return
 
+    trial_days = load_subscription_plans().get('free_trial', {}).get('days', 1)
+    expires_at = (datetime.now() + timedelta(days=trial_days)).isoformat()
     for base_url in candidates:
         try:
             data = json.dumps({
                 'username': username,
                 'password': password,
-                'display_name': display_name or username
+                'display_name': display_name or username,
+                'expires_at': expires_at
             }).encode('utf-8')
             req = urllib.request.Request(
                 f'{base_url}/api/auth/bot-create',
@@ -97,7 +100,7 @@ def sync_user_to_panel(username, password, display_name=None):
             "display_name": display_name or username,
             "avatar": None,
             "created_at": datetime.now().isoformat(),
-            "expires_at": None,
+            "expires_at": expires_at,
             "disabled": False,
             "last_login": None,
             "custom_subdomain": None,
@@ -893,16 +896,82 @@ def req_extra_server_callback(call):
             f"استخدم الأكواد 🎟️ للحصول على نقاط.",
             parse_mode="Markdown")
         return
-    new_pts, ok = deduct_points(uname, cost, "طلب إنشاء حساب إضافي")
-    if not ok:
-        bot.send_message(call.message.chat.id, "❌ حدث خطأ أثناء خصم النقاط.")
-        return
     bot.send_message(call.message.chat.id,
-        f"✅ تم خصم `{cost}` نقطة.\n💰 رصيدك المتبقي: `{new_pts}` نقطة\n\n"
+        f"💰 رصيدك: `{pts}` نقطة (المطلوب: `{cost}`)\n\n"
         f"🖥️ أرسل اسم المستخدم الجديد (بالإنجليزية):",
         parse_mode="Markdown")
     msg = bot.send_message(call.message.chat.id, "اكتب اسم المستخدم:")
-    bot.register_next_step_handler(msg, process_paid_username)
+    bot.register_next_step_handler(msg, lambda m: req_extra_username_step(m, uname, cost))
+
+def req_extra_username_step(message, uname, cost):
+    if not enforce_subscription(message):
+        return
+    username = message.text.strip()
+    if not username or not username.isalnum():
+        bot.send_message(message.chat.id, "❌ اسم مستخدم غير صالح! استخدم أحرف وأرقام فقط.")
+        msg = bot.send_message(message.chat.id, "اكتب اسم المستخدم:")
+        bot.register_next_step_handler(msg, lambda m: req_extra_username_step(m, uname, cost))
+        return
+    users = load_users()
+    if username in users:
+        bot.send_message(message.chat.id, "❌ اسم المستخدم هذا مأخوذ. اختر اسماً آخر:")
+        msg = bot.send_message(message.chat.id, "اكتب اسم المستخدم:")
+        bot.register_next_step_handler(msg, lambda m: req_extra_username_step(m, uname, cost))
+        return
+    msg = bot.send_message(message.chat.id, f"👤 اسم المستخدم: `{username}`\n\nأرسل كلمة المرور:", parse_mode="Markdown")
+    bot.register_next_step_handler(msg, lambda m: req_extra_password_step(m, uname, username, cost))
+
+def req_extra_password_step(message, uname, new_username, cost):
+    if not enforce_subscription(message):
+        return
+    password = message.text.strip()
+    if len(password) < 6:
+        bot.send_message(message.chat.id, "❌ كلمة المرور يجب أن تكون 6 أحرف على الأقل.")
+        msg = bot.send_message(message.chat.id, "أرسل كلمة المرور:")
+        bot.register_next_step_handler(msg, lambda m: req_extra_password_step(m, uname, new_username, cost))
+        return
+    # Save pending request
+    pending = load_pending_subs()
+    req_id = f"extra_{message.from_user.id}_{int(datetime.now().timestamp())}"
+    pending[req_id] = {
+        'type': 'extra_server',
+        'telegram_id': message.from_user.id,
+        'username': message.from_user.username or '',
+        'uname': uname,
+        'new_username': new_username,
+        'new_password': password,
+        'cost': cost,
+        'requested_at': datetime.now().isoformat()
+    }
+    save_pending_subs(pending)
+    bot.send_message(message.chat.id,
+        f"⏳ تم إرسال طلب إنشاء حساب إضافي للأدمن.\n"
+        f"👤 اسم المستخدم الجديد: `{new_username}`\n"
+        f"💰 التكلفة: `{cost}` نقطة (سيتم الخصم بعد الموافقة)\n\n"
+        f"انتظر رد الأدمن...",
+        parse_mode="Markdown")
+    # Notify admin
+    plans = load_subscription_plans()
+    mk = types.InlineKeyboardMarkup(row_width=2)
+    mk.add(
+        ikb_button("✅ موافقة", callback_data=f"admin_approve_extra_{req_id}", style="success"),
+        ikb_button("❌ رفض", callback_data=f"admin_reject_extra_{req_id}", style="danger")
+    )
+    mk.add(ikb_button("💬 فتح الشات مع المستخدم", url=f"https://t.me/user?id={message.from_user.id}", style="primary"))
+    settings = load_bot_settings()
+    admin_ids = set(settings.get('admin_list', []))
+    admin_ids.add(ADMIN_ID)
+    for aid in admin_ids:
+        try:
+            bot.send_message(aid,
+                f"🧾 *طلب إنشاء حساب إضافي*\n"
+                f"👤 المستخدم: {user_ref(message.from_user)}\n"
+                f"🔑 حسابه الحالي: `{uname}`\n"
+                f"🆕 الحساب الجديد: `{new_username}`\n"
+                f"💰 التكلفة: `{cost}` نقطة",
+                parse_mode="Markdown", reply_markup=mk)
+        except Exception:
+            pass
 
 def process_paid_username(message):
     if not enforce_subscription(message):
@@ -1686,6 +1755,78 @@ def admin_callbacks(call):
                 bot.send_message(call.message.chat.id, "🚫 تم رفض الطلب.")
                 _log_action("رفض اشتراك", admin_id=call.from_user.id,
                             details=f"رفض طلب {tg_id}")
+            pending.pop(req_id, None)
+            save_pending_subs(pending)
+            try:
+                bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+            except Exception:
+                pass
+
+    # ─── تفعيل/رفض طلب حساب إضافي ───
+    elif call.data.startswith("admin_approve_extra_") or call.data.startswith("admin_reject_extra_"):
+        is_approve = call.data.startswith("admin_approve_extra_")
+        req_id = call.data.split("_", 3)[3]
+        pending = load_pending_subs()
+        req = pending.get(req_id)
+        if not req:
+            bot.send_message(call.message.chat.id, "❌ هذا الطلب لم يعد موجوداً.")
+        else:
+            tg_id = req.get('telegram_id')
+            uname = req.get('uname')
+            new_username = req.get('new_username')
+            new_password = req.get('new_password')
+            cost = req.get('cost', 7)
+            if is_approve:
+                users_all = load_users()
+                if uname in users_all:
+                    pts = users_all[uname].get('points', 0)
+                    if pts < cost:
+                        bot.send_message(call.message.chat.id, f"❌ رصيد المستخدم غير كافٍ ({pts}/{cost}).")
+                        return
+                    old = users_all[uname]['points']
+                    users_all[uname]['points'] = max(0, old - cost)
+                    # Create the new account
+                    auto_pass = new_password
+                    users_all[new_username] = {
+                        'password': hashlib.sha256(auto_pass.encode()).hexdigest(),
+                        'password_plain': auto_pass,
+                        'max_sessions': 999,
+                        'max_servers': 1,
+                        'points': 0,
+                        'main_file': 'main.py',
+                        'created': datetime.now().isoformat(),
+                        'expiry': (datetime.now() + timedelta(days=load_subscription_plans().get('free_trial', {}).get('days', 1))).isoformat(),
+                        'plan': 'free_trial',
+                        'expiry_notified': False,
+                        'telegram_id': tg_id,
+                        'banned': False
+                    }
+                    save_users(users_all)
+                    os.makedirs(os.path.join(USERS_FOLDER, new_username), exist_ok=True)
+                    assign_ip(new_username)
+                    sync_user_to_panel(new_username, auto_pass)
+                    try:
+                        bot.send_message(tg_id,
+                            f"🎉 **تم إنشاء حسابك الإضافي بنجاح!**\n\n"
+                            f"👤 اسم المستخدم: `{new_username}`\n"
+                            f"🔑 كلمة السر: `{auto_pass}`\n"
+                            f"💰 تم خصم `{cost}` نقطة من رصيدك.",
+                            parse_mode="Markdown")
+                    except Exception:
+                        pass
+                    bot.send_message(call.message.chat.id, f"✅ تم إنشاء الحساب `{new_username}` بنجاح.", parse_mode="Markdown")
+                    _log_action("موافقة حساب إضافي", admin_id=call.from_user.id,
+                                details=f"إنشاء {new_username} لـ {tg_id}")
+                else:
+                    bot.send_message(call.message.chat.id, "❌ لم يتم العثور على المستخدم الأصلي.")
+            else:
+                try:
+                    bot.send_message(tg_id, "❌ لم تتم الموافقة على طلب الحساب الإضافي.")
+                except Exception:
+                    pass
+                bot.send_message(call.message.chat.id, "🚫 تم رفض الطلب.")
+                _log_action("رفض حساب إضافي", admin_id=call.from_user.id,
+                            details=f"رفض حساب جديد لـ {tg_id}")
             pending.pop(req_id, None)
             save_pending_subs(pending)
             try:

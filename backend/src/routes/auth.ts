@@ -47,7 +47,7 @@ router.post("/auth/bot-create", async (req: Request, res: Response): Promise<voi
     if (!authHeader || !authHeader.startsWith("Bearer ") || authHeader.slice(7) !== BOT_SECRET) {
       res.status(401).json({ error: "Unauthorized" }); return;
     }
-    const { username, password, display_name } = req.body;
+    const { username, password, display_name, expires_at } = req.body;
     if (!username || !password) {
       res.status(400).json({ error: "Username and password required" }); return;
     }
@@ -62,7 +62,7 @@ router.post("/auth/bot-create", async (req: Request, res: Response): Promise<voi
       display_name: display_name || username,
       avatar: null,
       created_at: new Date().toISOString(),
-      expires_at: null,
+      expires_at: expires_at || null,
       disabled: false,
     };
     const user = storage.createUser(newUser);
