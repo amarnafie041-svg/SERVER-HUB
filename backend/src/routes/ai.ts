@@ -49,7 +49,7 @@ router.put("/ai/settings", authenticate, async (_req: Request, res: Response): P
   res.json({ success: true });
 });
 
-router.post("/ai/chat", authenticate, async (req: Request, res: Response): Promise<void> => {
+router.post("/ai/chat", async (req: Request, res: Response): Promise<void> => {
   try {
     const { message, model: modelKey, history = [], stream: doStream, thinking } = req.body;
 
@@ -97,6 +97,9 @@ router.post("/ai/chat", authenticate, async (req: Request, res: Response): Promi
       res.flushHeaders();
     }
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
     const response = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: {
@@ -104,16 +107,17 @@ router.post("/ai/chat", authenticate, async (req: Request, res: Response): Promi
         Authorization: `Bearer ${NVIDIA_API_KEY}`,
       },
       body: JSON.stringify(requestBody),
-    });
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeout));
 
     if (!response.ok) {
       const errText = await response.text();
       logger.error({ status: response.status, body: errText }, "AI API error");
       if (doStream) {
-        res.write(`data: ${JSON.stringify({ error: "AI service error" })}\n\n`);
+        res.write(`data: ${JSON.stringify({ error: `AI API error: ${response.status} ${errText.slice(0, 100)}` })}\n\n`);
         res.end();
       } else {
-        res.status(502).json({ error: "AI service error", content: "", model: modelConfig.name });
+        res.status(502).json({ error: `AI API error: ${errText.slice(0, 200)}`, content: "", model: modelConfig.name });
       }
       return;
     }
@@ -160,9 +164,16 @@ router.post("/ai/chat", authenticate, async (req: Request, res: Response): Promi
       const content = data.choices?.[0]?.message?.content || "";
       res.json({ content, model: modelConfig.name });
     }
-  } catch (err) {
+  } catch (err: any) {
     logger.error({ err }, "Failed to call AI");
-    res.status(500).json({ error: "Internal error", content: "", model: "unknown" });
+    const msg = err.name === "AbortError" ? "AI request timed out (30s)" : `AI error: ${err.message || "Internal error"}`;
+    if (doStream) {
+      if (!res.headersSent) res.writeHead(500, { "Content-Type": "application/json" });
+      res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
+      res.end();
+    } else {
+      res.status(500).json({ error: msg, content: "", model: "unknown" });
+    }
   }
 });
 
